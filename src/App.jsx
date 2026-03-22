@@ -144,6 +144,25 @@ export default function App() {
     startTimeRef.current = performance.now()
     const userMsg = { role: 'user', content: transcript, time: getTimeString() }
 
+    // EMERGENCY DETECTION — fires before any other intent check
+    const t = transcript.toLowerCase()
+    const isChestEmergency = (t.includes('chest pain') || t.includes('chest hurts') || t.includes('heart attack'))
+    const isBreathingEmergency = t.includes("can't breathe") || t.includes('cannot breathe') || t.includes('cant breathe') || t.includes('difficulty breathing') || t.includes('shortness of breath')
+    const isMentalEmergency = t.includes('suicide') || t.includes('kill myself') || t.includes('self harm') || t.includes('end my life') || t.includes('want to die')
+
+    if (isChestEmergency || isBreathingEmergency) {
+      const reply = '⚠️ This sounds like a medical emergency. Please call 112 immediately or go to the nearest emergency room. Chest pain or difficulty breathing can be life-threatening. Do not wait — call 112 now.'
+      setMessages(prev => [...prev, userMsg, { role: 'assistant', content: reply, time: getTimeString() }])
+      speakRef.current?.('This sounds like a medical emergency. Please call 112 immediately.', lang)
+      return
+    }
+    if (isMentalEmergency) {
+      const reply = 'I hear you and I am really concerned about you. Please call iCall right now at 9152987821. They are available and want to help. You deserve support. Are you safe right now?'
+      setMessages(prev => [...prev, userMsg, { role: 'assistant', content: reply, time: getTimeString() }])
+      speakRef.current?.('Please call iCall right now at 9152987821. You deserve support.', lang)
+      return
+    }
+
     // Session summary
     if (isAskingSummary(transcript)) {
       setMessages(prev => [...prev, userMsg])

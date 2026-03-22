@@ -1,15 +1,5 @@
 import { useCallback } from 'react'
 
-/**
- * useWeather — fetches weather + AQI from OpenWeatherMap.
- * Provides health-relevant context: allergy risk, air quality, UV tips.
- *
- * Get free key: openweathermap.org/api → free tier (1000 calls/day)
- * Add to .env: VITE_OPENWEATHER_KEY=your_key_here
- *
- * Without key: returns mock data so demo still works.
- */
-
 const AQI_LABELS = ['', 'Good', 'Fair', 'Moderate', 'Poor', 'Very Poor']
 const AQI_TIPS   = [
   '',
@@ -20,44 +10,49 @@ const AQI_TIPS   = [
   'Very poor air quality. Stay indoors, wear a mask if you must go out.',
 ]
 
-// Weather keywords that trigger a weather query
+// Only trigger on explicit weather intent words
 const WEATHER_KEYWORDS = [
-  'weather', 'temperature', 'aqi', 'air quality', 'pollution', 'allerg',
-  'pollen', 'humidity', 'forecast', 'outside', 'outdoor', 'breathe',
-  'मौसम', 'हवा', 'प्रदूषण',
+  'weather', 'temperature', 'aqi', 'air quality', 'air pollution',
+  'pollen', 'humidity', 'forecast', 'मौसम', 'हवा', 'प्रदूषण',
+]
+
+// Medical/emergency words that must NEVER trigger weather — ever
+const MEDICAL_OVERRIDE = [
+  'chest pain', 'chest hurts', 'heart attack',
+  "can't breathe", 'cannot breathe', 'cant breathe',
+  'difficulty breathing', 'shortness of breath', 'short of breath',
+  'stroke', 'unconscious', 'suicide', 'self harm', 'overdose',
+  'seizure', 'choking', 'bleeding', 'breathe',
+  'pain', 'hurt', 'ache', 'fever', 'sick', 'ill',
+  'vomit', 'nausea', 'dizzy', 'faint', 'swollen',
+  'headache', 'migraine', 'rash', 'allerg', 'infection',
+  'symptom', 'doctor', 'hospital', 'medicine', 'medication',
 ]
 
 export function useWeather() {
 
   const isWeatherQuery = useCallback((text) => {
     const t = text.toLowerCase()
+    // Medical query always takes priority — never send to weather
+    if (MEDICAL_OVERRIDE.some(w => t.includes(w))) return false
     return WEATHER_KEYWORDS.some(k => t.includes(k))
   }, [])
 
   const getWeather = useCallback(async (city = 'Mumbai') => {
     const key = import.meta.env.VITE_OPENWEATHER_KEY
-
-    // Mock data if no API key — demo still works perfectly
-    if (!key) {
-      return getMockWeather(city)
-    }
-
+    if (!key) return getMockWeather(city)
     try {
-      // Step 1: Current weather
-      const wRes  = await fetch(
+      const wRes = await fetch(
         `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${key}&units=metric`
       )
       if (!wRes.ok) return getMockWeather(city)
       const w = await wRes.json()
-
-      // Step 2: Air quality (using coordinates from weather response)
       const { lat, lon } = w.coord
       const aRes = await fetch(
         `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${key}`
       )
       const a   = aRes.ok ? await aRes.json() : null
       const aqi = a?.list?.[0]?.main?.aqi || 1
-
       return {
         city:        w.name,
         temp:        Math.round(w.main.temp),
@@ -69,9 +64,7 @@ export function useWeather() {
         aqiLabel:    AQI_LABELS[aqi] || 'Unknown',
         tip:         AQI_TIPS[aqi]   || '',
       }
-    } catch {
-      return getMockWeather(city)
-    }
+    } catch { return getMockWeather(city) }
   }, [])
 
   const buildWeatherText = useCallback((data) => {
