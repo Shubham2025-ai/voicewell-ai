@@ -1,17 +1,11 @@
 import { useCallback } from 'react'
 
 /**
- * useAppointment — voice appointment booking via Google Calendar URL pre-fill.
+ * useAppointment — voice appointment booking.
  *
- * Why this approach:
- * - Google Calendar MCP requires server-side auth — cannot be called from browser
- * - Pre-fill URL opens Google Calendar with all fields populated
- * - User clicks "Save" in one tap — event is created in their real calendar
- * - Zero server needed, works perfectly in demo
- *
- * The URL approach is actually BETTER for demo:
- * Judges see Google Calendar open with the event pre-filled → they click Save →
- * real event appears in calendar. That's the "tasks across devices" demo moment.
+ * Creates a pre-filled Google Calendar event URL.
+ * User taps "Add to Calendar" → Google Calendar opens pre-filled → one tap to save.
+ * Zero server needed, 100% reliable, works perfectly in demo.
  */
 
 const APPOINTMENT_KEYWORDS = [
@@ -28,13 +22,13 @@ const DAYS = {
 
 function extractTitle(text) {
   const t = text.toLowerCase()
-  if (t.includes('cardio')   || t.includes('heart'))    return 'Cardiology Consultation'
-  if (t.includes('derma')    || t.includes('skin'))     return 'Dermatology Consultation'
-  if (t.includes('dentist')  || t.includes('dental'))   return 'Dental Appointment'
-  if (t.includes('eye')      || t.includes('ophthal'))  return 'Eye Checkup'
-  if (t.includes('checkup')  || t.includes('check-up')) return 'General Health Checkup'
-  if (t.includes('follow'))                              return 'Doctor Follow-up'
-  if (t.includes('blood')    || t.includes('lab'))      return 'Lab Test / Blood Work'
+  if (t.includes('cardio')  || t.includes('heart'))    return 'Cardiology Consultation'
+  if (t.includes('derma')   || t.includes('skin'))     return 'Dermatology Consultation'
+  if (t.includes('dentist') || t.includes('dental'))   return 'Dental Appointment'
+  if (t.includes('eye')     || t.includes('ophthal'))  return 'Eye Checkup'
+  if (t.includes('checkup') || t.includes('check-up')) return 'General Health Checkup'
+  if (t.includes('follow'))                             return 'Doctor Follow-up'
+  if (t.includes('blood')   || t.includes('lab'))      return 'Lab Test / Blood Work'
   const dr = text.match(/with\s+dr\.?\s+([a-z\s]+?)(?:\s+on|\s+at|$)/i)
   if (dr) return `Doctor Appointment – Dr. ${dr[1].trim()}`
   return 'Doctor Appointment'
@@ -44,24 +38,29 @@ function parseDateTime(text) {
   const t   = text.toLowerCase()
   const now = new Date()
 
-  // IST = UTC+5:30
-  const istNow = new Date(now.getTime() + 5.5 * 60 * 60 * 1000)
-  const today  = new Date(istNow)
-  today.setUTCHours(0, 0, 0, 0)
+  // Work in IST (UTC+5:30)
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000
+  const nowIST     = new Date(now.getTime() + IST_OFFSET)
 
-  let target = new Date(today)
+  // Get today midnight in IST
+  const todayIST = new Date(nowIST)
+  todayIST.setUTCHours(0, 0, 0, 0)
+
+  let target = new Date(todayIST)
 
   if (t.includes('tomorrow')) {
-    target = new Date(today.getTime() + 86400000)
+    target = new Date(todayIST.getTime() + 86400000)
   } else if (t.includes('next week')) {
-    target = new Date(today.getTime() + 7 * 86400000)
+    target = new Date(todayIST.getTime() + 7 * 86400000)
+  } else if (t.includes('today')) {
+    target = new Date(todayIST)
   } else {
     for (const [day, num] of Object.entries(DAYS)) {
       if (t.includes(day)) {
-        const cur  = today.getUTCDay()
+        const cur  = todayIST.getUTCDay()
         let diff   = num - cur
         if (diff <= 0) diff += 7
-        target = new Date(today.getTime() + diff * 86400000)
+        target = new Date(todayIST.getTime() + diff * 86400000)
         break
       }
     }
@@ -77,33 +76,26 @@ function parseDateTime(text) {
     if (t12[3] === 'am' && h === 12) h = 0
   }
 
-  // Build IST datetime strings for Google Calendar URL format: YYYYMMDDTHHMMSS
   const pad = n => String(n).padStart(2, '0')
-  const y   = target.getUTCFullYear()
-  const mo  = pad(target.getUTCMonth() + 1)
-  const d   = pad(target.getUTCDate())
-  const startStr = `${y}${mo}${d}T${pad(h)}${pad(m)}00`
-  const endH     = h + 1
-  const endStr   = `${y}${mo}${d}T${pad(endH > 23 ? 23 : endH)}${pad(m)}00`
 
+  // Google Calendar URL format: YYYYMMDDTHHMMSS (local time, no Z)
+  const y  = target.getUTCFullYear()
+  const mo = pad(target.getUTCMonth() + 1)
+  const d  = pad(target.getUTCDate())
+  const endH = Math.min(h + 1, 23)
+
+  const startStr = `${y}${mo}${d}T${pad(h)}${pad(m)}00`
+  const endStr   = `${y}${mo}${d}T${pad(endH)}${pad(m)}00`
+
+  // Display strings
   const displayDate = target.toLocaleDateString('en-IN', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-    timeZone: 'Asia/Kolkata',
   })
-  const displayTime = `${h > 12 ? h - 12 : h === 0 ? 12 : h}:${pad(m)} ${h >= 12 ? 'PM' : 'AM'}`
+  const hour12  = h === 0 ? 12 : h > 12 ? h - 12 : h
+  const ampm    = h >= 12 ? 'PM' : 'AM'
+  const displayTime = `${hour12}:${pad(m)} ${ampm}`
 
   return { startStr, endStr, displayDate, displayTime }
-}
-
-function buildCalendarUrl(title, startStr, endStr, description) {
-  const p = new URLSearchParams({
-    action:  'TEMPLATE',
-    text:    title,
-    dates:   `${startStr}/${endStr}`,
-    details: description,
-    ctz:     'Asia/Kolkata',
-  })
-  return `https://calendar.google.com/calendar/render?${p}`
 }
 
 export function useAppointment() {
@@ -118,21 +110,26 @@ export function useAppointment() {
   }, [])
 
   const bookAppointment = useCallback((transcript) => {
-    const title    = extractTitle(transcript)
-    const dt       = parseDateTime(transcript)
-    const desc     = `Booked via VoiceWell AI Health Companion\nOriginal request: "${transcript}"\n\n⚠️ Remember to confirm this appointment with the doctor's office.`
-    const calUrl   = buildCalendarUrl(title, dt.startStr, dt.endStr, desc)
+    const title = extractTitle(transcript)
+    const dt    = parseDateTime(transcript)
+
+    const description = encodeURIComponent(
+      `Booked via VoiceWell AI Health Companion\nRequest: "${transcript}"\n\n⚠️ Please confirm with the doctor's office before your visit.`
+    )
+
+    // Google Calendar pre-fill URL — opens calendar with event ready to save
+    const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dt.startStr}/${dt.endStr}&details=${description}&ctz=Asia%2FKolkata`
 
     return {
       title,
       date:        dt.displayDate,
       time:        dt.displayTime,
-      calendarUrl: calUrl,
+      calendarUrl,
     }
   }, [])
 
   const buildAppointmentText = useCallback((data) => {
-    return `I've prepared your ${data.title} for ${data.date} at ${data.time} IST. Tap "Save to Google Calendar" on the card below — it opens Google Calendar with everything pre-filled. One tap to confirm!`
+    return `I've prepared your ${data.title} for ${data.date} at ${data.time}. Tap "Add to Google Calendar" on the card to save it — everything is pre-filled, just one tap!`
   }, [])
 
   return { isAppointmentQuery, bookAppointment, buildAppointmentText }
