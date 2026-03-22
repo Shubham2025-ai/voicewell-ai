@@ -268,20 +268,11 @@ export default function App() {
 
     // ── Appointment booking ──────────────────────────────────────────────
     if (isAppointmentQuery(transcript)) {
-      setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
-      try {
-        const data = await bookAppointment(transcript)
-        const text = buildAppointmentText(data)
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
-          { role:'assistant', content:text, appointmentCard:data, time:getTimeString() }])
-        speakRef.current?.(text, lang)
-        setApiCallCount(prev => prev + 1)
-      } catch {
-        const errMsg = "I couldn't create the calendar event right now. Please try again."
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
-          { role:'assistant', content:errMsg, time:getTimeString() }])
-        speakRef.current?.(errMsg, lang)
-      }
+      const data = bookAppointment(transcript)
+      const text = buildAppointmentText(data)
+      setMessages(prev => [...prev, userMsg,
+        { role:'assistant', content:text, appointmentCard:data, time:getTimeString() }])
+      speakRef.current?.(text, lang)
       return
     }
 
