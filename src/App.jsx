@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 
 // Layout
 import Header          from './components/Header.jsx'
-import Navigation      from './components/Navigation.jsx'
 import ChromeWarning   from './components/ChromeWarning.jsx'
 
 // Voice page components
@@ -368,6 +367,7 @@ export default function App() {
         reminderCount={reminders.length}
         onRemindersToggle={() => setActivePage('medications')}
         isConnected={isConnected}
+        activePage={activePage}       onNavigate={setActivePage}
       />
 
       {/* Page content */}
@@ -503,12 +503,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Bottom navigation */}
-      <Navigation
-        activePage={activePage}
-        onNavigate={setActivePage}
-        reminderCount={reminders.length}
-      />
     </div>
   )
 }
