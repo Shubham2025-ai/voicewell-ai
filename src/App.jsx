@@ -22,7 +22,6 @@ const WELCOME = {
   time:    getTimeString(),
 }
 
-// ── Intent detectors ──────────────────────────────────────────────────────────
 const isAskingReminders = t => {
   const l = t.toLowerCase()
   return ['medication','reminder','medicine','tablet','pill','schedule'].some(w => l.includes(w)) &&
@@ -38,7 +37,6 @@ const isAskingSummary = t => {
   return ['summary','summarize','recap','what did we','session','review'].some(w => l.includes(w))
 }
 
-// ── Groq-powered session summary ──────────────────────────────────────────────
 async function generateSummary(history, apiKey) {
   if (!apiKey || history.length < 2) return null
   try {
@@ -52,43 +50,41 @@ async function generateSummary(history, apiKey) {
         messages: [
           {
             role: 'system',
-            content: `You are summarizing a health conversation. Return ONLY valid JSON with this exact shape:
-{
-  "overview": "2-sentence plain-English summary of the conversation",
-  "topics": ["topic1", "topic2", "topic3"],
-  "tips": ["personalised tip 1", "personalised tip 2", "personalised tip 3"]
-}
-No markdown, no backticks, just raw JSON.`
+            content: `Summarize this health conversation. Return ONLY valid JSON, no markdown, no backticks:
+{"overview":"2-sentence summary","topics":["topic1","topic2"],"tips":["tip1","tip2","tip3"]}`
           },
           {
             role: 'user',
-            content: `Summarize this health conversation:\n\n${
-              history.filter(m => m.role !== 'loading')
-                     .map(m => `${m.role === 'user' ? 'User' : 'VoiceWell'}: ${m.content}`)
-                     .join('\n')
-            }`
+            content: `Conversation:\n${history.filter(m=>m.role!=='loading').map(m=>`${m.role==='user'?'User':'VoiceWell'}: ${m.content}`).join('\n')}`
           }
         ]
       })
     })
-    const data  = await res.json()
-    const text  = data.choices?.[0]?.message?.content?.trim()
+    const data = await res.json()
+    const text = data.choices?.[0]?.message?.content?.trim()
     return JSON.parse(text)
   } catch { return null }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [messages,      setMessages]      = useState([WELCOME])
-  const [language,      setLanguage]      = useState('en-US')
-  const [darkMode,      setDarkMode]      = useState(false)
-  const [showReminders, setShowReminders] = useState(false)
-  const [summary,       setSummary]       = useState(null)
-  const [loadingSummary,setLoadingSummary]= useState(false)
-  const chatEndRef                        = useRef(null)
-  const startTimeRef                      = useRef(null)
+  const [messages,       setMessages]       = useState([WELCOME])
+  const [language,       setLanguage]       = useState('en-US')
+  const [darkMode,       setDarkMode]       = useState(false)
+  const [showReminders,  setShowReminders]  = useState(false)
+  const [summary,        setSummary]        = useState(null)
+  const [loadingSummary, setLoadingSummary] = useState(false)
 
-  // ── Hooks ──────────────────────────────────────────────────────────────────
+  const chatEndRef    = useRef(null)
+  const startTimeRef  = useRef(null)
+
+  // ── Keep live refs so useSpeech never gets a stale closure ────────────────
+  const messagesRef   = useRef(messages)
+  const languageRef   = useRef(language)
+  const remindersRef  = useRef([])
+  useEffect(() => { messagesRef.current  = messages  }, [messages])
+  useEffect(() => { languageRef.current  = language  }, [language])
+
+  // ── Hooks ─────────────────────────────────────────────────────────────────
   const { speak, stop, isSpeaking }               = useTTS()
   const { emotion, loading: emotionLoading,
           detectEmotion }                         = useEmotion()
@@ -100,23 +96,25 @@ export default function App() {
   const { isWeatherQuery, getWeather,
           buildWeatherText }                      = useWeather()
 
-  // ── Dark mode ──────────────────────────────────────────────────────────────
+  useEffect(() => { remindersRef.current = reminders }, [reminders])
+
+  // ── Dark mode ─────────────────────────────────────────────────────────────
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
   }, [darkMode])
 
-  // ── Auto-scroll ────────────────────────────────────────────────────────────
+  // ── Auto-scroll ───────────────────────────────────────────────────────────
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, summary])
 
-  // ── Welcome TTS ────────────────────────────────────────────────────────────
+  // ── Welcome TTS ───────────────────────────────────────────────────────────
   useEffect(() => {
     const t = setTimeout(() => speak(WELCOME.content, 'en-US'), 900)
     return () => clearTimeout(t)
   }, []) // eslint-disable-line
 
-  // ── Groq response ──────────────────────────────────────────────────────────
+  // ── Groq response handler ─────────────────────────────────────────────────
   const handleGroqResponse = useCallback((agentText) => {
     const latency = startTimeRef.current
       ? Math.round(performance.now() - startTimeRef.current) : null
@@ -124,121 +122,135 @@ export default function App() {
       const filtered = prev.filter(m => m.role !== 'loading')
       return [...filtered, { role: 'assistant', content: agentText, time: getTimeString(), latency }]
     })
-    speak(agentText, containsHindi(agentText) ? 'hi-IN' : language)
-  }, [language, speak])
+    speak(agentText, containsHindi(agentText) ? 'hi-IN' : languageRef.current)
+  }, [speak])
 
   const { sendMessage, isLoading } = useGroq({ onResponse: handleGroqResponse })
 
-  // ── Main transcript handler ────────────────────────────────────────────────
+  // ── sendMessage ref — always latest ──────────────────────────────────────
+  const sendMessageRef     = useRef(sendMessage)
+  const detectEmotionRef   = useRef(detectEmotion)
+  const addReminderRef     = useRef(addReminder)
+  const parseReminderRef   = useRef(parseReminderText)
+  const getNutritionRef    = useRef(getNutrition)
+  const buildNutritionRef  = useRef(buildNutritionText)
+  const getWeatherRef      = useRef(getWeather)
+  const buildWeatherRef    = useRef(buildWeatherText)
+  const speakRef           = useRef(speak)
+  const setSummaryRef      = useRef(setSummary)
+  const setLoadingRef      = useRef(setLoadingSummary)
+
+  useEffect(() => { sendMessageRef.current    = sendMessage    }, [sendMessage])
+  useEffect(() => { detectEmotionRef.current  = detectEmotion  }, [detectEmotion])
+  useEffect(() => { addReminderRef.current    = addReminder    }, [addReminder])
+  useEffect(() => { parseReminderRef.current  = parseReminderText }, [parseReminderText])
+  useEffect(() => { getNutritionRef.current   = getNutrition   }, [getNutrition])
+  useEffect(() => { buildNutritionRef.current = buildNutritionText }, [buildNutritionText])
+  useEffect(() => { getWeatherRef.current     = getWeather     }, [getWeather])
+  useEffect(() => { buildWeatherRef.current   = buildWeatherText }, [buildWeatherText])
+  useEffect(() => { speakRef.current          = speak          }, [speak])
+
+  // ── Final transcript — stable ref, reads live state via refs ──────────────
   const handleFinalTranscript = useCallback(async (transcript) => {
+    if (!transcript?.trim()) return
+
+    const lang = languageRef.current
     if (containsHindi(transcript)) setLanguage('hi-IN')
     startTimeRef.current = performance.now()
 
     const userMsg = { role: 'user', content: transcript, time: getTimeString() }
 
-    // ── Session summary ───────────────────────────────────────────────────
+    // ── Session summary ────────────────────────────────────────────────────
     if (isAskingSummary(transcript)) {
       setMessages(prev => [...prev, userMsg])
-      setLoadingSummary(true)
-      const s = await generateSummary(messages, import.meta.env.VITE_GROQ_API_KEY)
-      setLoadingSummary(false)
+      setLoadingRef.current(true)
+      const s = await generateSummary(messagesRef.current, import.meta.env.VITE_GROQ_API_KEY)
+      setLoadingRef.current(false)
       if (s) {
-        setSummary(s)
-        const summaryText = `Here's your session summary. ${s.overview} Topics covered: ${s.topics.join(', ')}.`
-        speak(summaryText, language)
+        setSummaryRef.current(s)
+        speakRef.current(`Here's your session summary. ${s.overview}`, lang)
       } else {
-        const fallback = "I couldn't generate a summary yet — we need a bit more conversation first!"
-        setMessages(prev => [...prev, { role: 'assistant', content: fallback, time: getTimeString() }])
-        speak(fallback, language)
+        const fb = "We need a bit more conversation before I can summarise. Keep chatting!"
+        setMessages(prev => [...prev, { role: 'assistant', content: fb, time: getTimeString() }])
+        speakRef.current(fb, lang)
       }
       return
     }
 
-    // ── Reminder: list ────────────────────────────────────────────────────
+    // ── Reminder: list ─────────────────────────────────────────────────────
     if (isAskingReminders(transcript)) {
-      const reply = reminders.length === 0
-        ? "You have no reminders set yet. Say something like 'Remind me to take vitamin D at 8 AM' to add one."
-        : `Your reminders: ${reminders.map(r => `${r.medication} at ${r.times.join(' and ')}`).join('. ')}.`
+      const rems  = remindersRef.current
+      const reply = rems.length === 0
+        ? "You have no reminders set yet. Say something like 'Remind me to take vitamin D at 8 AM'."
+        : `Your reminders: ${rems.map(r => `${r.medication} at ${r.times.join(' and ')}`).join('. ')}.`
       setMessages(prev => [...prev, userMsg, { role: 'assistant', content: reply, time: getTimeString() }])
-      speak(reply, language)
+      speakRef.current(reply, lang)
       return
     }
 
-    // ── Reminder: set new ─────────────────────────────────────────────────
+    // ── Reminder: set ──────────────────────────────────────────────────────
     if (isSettingReminder(transcript)) {
-      const { medication, times } = parseReminderText(transcript)
-      await addReminder(medication, times)
-      const reply = `Done! I've set a reminder to take ${medication} at ${times.join(' and ')}. I'll notify you on time.`
+      const { medication, times } = parseReminderRef.current(transcript)
+      await addReminderRef.current(medication, times)
+      const reply = `Done! Reminder set to take ${medication} at ${times.join(' and ')}. I'll notify you on time.`
       setMessages(prev => [...prev, userMsg, { role: 'assistant', content: reply, time: getTimeString() }])
-      speak(reply, language)
+      speakRef.current(reply, lang)
       return
     }
 
-    // ── Nutrition query ───────────────────────────────────────────────────
+    // ── Nutrition ──────────────────────────────────────────────────────────
     if (isNutritionQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
-      const data = await getNutrition(transcript)
+      const data = await getNutritionRef.current(transcript)
       if (data) {
-        const text = buildNutritionText(data)
-        setMessages(prev => {
-          const filtered = prev.filter(m => m.role !== 'loading')
-          return [...filtered, {
-            role: 'assistant', content: text,
-            nutritionCard: data, time: getTimeString()
-          }]
-        })
-        speak(text, language)
+        const text = buildNutritionRef.current(data)
+        setMessages(prev => [
+          ...prev.filter(m => m.role !== 'loading'),
+          { role: 'assistant', content: text, nutritionCard: data, time: getTimeString() }
+        ])
+        speakRef.current(text, lang)
         return
       }
-      // Fall through to Groq if no nutrition data found
       setMessages(prev => prev.filter(m => m.role !== 'loading'))
     }
 
-    // ── Weather query ─────────────────────────────────────────────────────
+    // ── Weather ────────────────────────────────────────────────────────────
     if (isWeatherQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
-      // Extract city name if mentioned
       const cityMatch = transcript.match(/(?:in|at|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i)
       const city      = cityMatch ? cityMatch[1] : 'Mumbai'
-      const data      = await getWeather(city)
+      const data      = await getWeatherRef.current(city)
       if (data) {
-        const text = buildWeatherText(data)
-        setMessages(prev => {
-          const filtered = prev.filter(m => m.role !== 'loading')
-          return [...filtered, {
-            role: 'assistant', content: text,
-            weatherCard: data, time: getTimeString()
-          }]
-        })
-        speak(text, language)
+        const text = buildWeatherRef.current(data)
+        setMessages(prev => [
+          ...prev.filter(m => m.role !== 'loading'),
+          { role: 'assistant', content: text, weatherCard: data, time: getTimeString() }
+        ])
+        speakRef.current(text, lang)
         return
       }
       setMessages(prev => prev.filter(m => m.role !== 'loading'))
     }
 
-    // ── Default: Groq LLM ─────────────────────────────────────────────────
+    // ── Default: Groq ──────────────────────────────────────────────────────
     setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
 
-    const emotionPromise  = detectEmotion(transcript)
-    const history         = messages
+    const history = messagesRef.current
       .filter(m => m.role !== 'loading')
       .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }))
 
-    const detectedEmotion = await emotionPromise
+    const detectedEmotion = await detectEmotionRef.current(transcript)
     const emotionPrompt   = EMOTION_META[detectedEmotion]?.prompt || ''
-    sendMessage(transcript, history, emotionPrompt)
+    sendMessageRef.current(transcript, history, emotionPrompt)
 
-  }, [messages, sendMessage, language, speak, detectEmotion,
-      reminders, addReminder, parseReminderText,
-      isNutritionQuery, getNutrition, buildNutritionText,
-      isWeatherQuery, getWeather, buildWeatherText])
+  }, [isNutritionQuery, isWeatherQuery]) // minimal deps — everything else via refs
 
+  // ── Speech recognition ────────────────────────────────────────────────────
   const { isListening, interimText, startListening, stopListening, error } = useSpeech({
     onFinalTranscript: handleFinalTranscript,
     language,
   })
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
   const turnCount = Math.max(0, messages.filter(m => m.role !== 'loading').length - 1)
 
   const handleClearChat = () => {
@@ -246,22 +258,19 @@ export default function App() {
     setMessages([{ ...WELCOME, time: getTimeString(), content: "Chat cleared! How can I help you?" }])
   }
 
-  const handleSummaryRequest = () => handleFinalTranscript('Give me a session summary')
-
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen relative" style={{ background: 'var(--bg-primary)' }}>
 
       <Header
         language={language}           onLanguageToggle={() => setLanguage(l => l === 'en-US' ? 'hi-IN' : 'en-US')}
         darkMode={darkMode}           onDarkToggle={() => setDarkMode(d => !d)}
-        onClearChat={handleClearChat} onSummary={handleSummaryRequest}
+        onClearChat={handleClearChat} onSummary={() => handleFinalTranscript('Give me a session summary')}
         emotion={emotion}             emotionLoading={emotionLoading}
         reminderCount={reminders.length}
         onRemindersToggle={() => setShowReminders(s => !s)}
       />
 
-      {/* Chat */}
+      {/* Chat area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 chat-scroll" style={{ background: 'var(--bg-primary)' }}>
 
         {turnCount > 0 && (
@@ -276,7 +285,6 @@ export default function App() {
             : <ChatBubble key={idx} message={msg} />
         )}
 
-        {/* Session summary card */}
         {loadingSummary && (
           <div className="flex justify-center py-4">
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -284,6 +292,7 @@ export default function App() {
             </div>
           </div>
         )}
+
         {summary && (
           <SessionSummary
             summary={summary}
@@ -292,7 +301,6 @@ export default function App() {
           />
         )}
 
-        {/* Interim transcript */}
         {interimText && (
           <div className="flex justify-end mb-2">
             <div
@@ -304,7 +312,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Mobile emotion */}
         {emotion && !emotionLoading && (
           <div className="flex justify-center mt-1 mb-2 sm:hidden">
             <div
@@ -338,7 +345,6 @@ export default function App() {
         </p>
       </div>
 
-      {/* Reminders panel */}
       {showReminders && (
         <div className="panel-enter" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, pointerEvents: 'all' }}>
@@ -359,7 +365,8 @@ function TextFallback({ onSubmit, disabled }) {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!value.trim()) return
-    onSubmit(value.trim()); setValue('')
+    onSubmit(value.trim())
+    setValue('')
   }
   return (
     <form onSubmit={handleSubmit} className="flex gap-2 mt-3">
