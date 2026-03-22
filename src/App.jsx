@@ -273,9 +273,16 @@ export default function App() {
           { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
       } catch (err) {
-        const errMsg = err.message?.includes('denied')
-          ? "I need your location to find nearby doctors. Please tap Allow when the browser asks for location access."
-          : "I couldn't access your location right now. Try searching on Practo or Google Maps for doctors near you."
+        let errMsg
+        if (err.message === 'denied') {
+          errMsg = "Location access was blocked. To fix this: click the lock icon in your Chrome address bar → Site settings → Location → Allow. Then try again."
+        } else if (err.message === 'not-supported') {
+          errMsg = "Your browser doesn't support location services. Please use Chrome and try again."
+        } else if (err.message === 'unavailable') {
+          errMsg = "I couldn't determine your location right now. Please try again or search on Practo for doctors near you."
+        } else {
+          errMsg = "Location request timed out. Please make sure location is enabled on your device and try again."
+        }
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
           { role:'assistant', content:errMsg, time:getTimeString() }])
         speakRef.current?.(errMsg, lang)

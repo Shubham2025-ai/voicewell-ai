@@ -88,11 +88,17 @@ export function useDoctorFinder() {
     // Step 1: Get user location
     const position = await new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
-        reject(new Error('Geolocation not supported'))
+        reject(new Error('not-supported'))
         return
       }
-      navigator.geolocation.getCurrentPosition(resolve, reject, {
-        timeout: 8000, maximumAge: 60000, enableHighAccuracy: false,
+      navigator.geolocation.getCurrentPosition(resolve, (err) => {
+        if (err.code === 1) reject(new Error('denied'))
+        else if (err.code === 2) reject(new Error('unavailable'))
+        else reject(new Error('timeout'))
+      }, {
+        timeout: 15000,
+        maximumAge: 300000,
+        enableHighAccuracy: false,
       })
     })
 
