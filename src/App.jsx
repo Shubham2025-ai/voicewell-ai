@@ -18,6 +18,7 @@ import { useNutrition }  from './hooks/useNutrition.js'
 import { useWeather }    from './hooks/useWeather.js'
 import { useDrugInteraction } from './hooks/useDrugInteraction.js'
 import { useBMI }           from './hooks/useBMI.js'
+import { useDoctorFinder }  from './hooks/useDoctorFinder.js'
 import { getTimeString, containsHindi } from './utils/helpers.js'
 
 const WELCOME = {
@@ -45,6 +46,7 @@ const SUGGESTIONS = [
   { icon: '🧘', text: "I need a breathing exercise",             cat: 'breathing' },
   { icon: '📊', text: "My weight is 70kg, height 5 feet 8",      cat: 'bmi' },
   { icon: '💊', text: "Can I take ibuprofen with aspirin?",       cat: 'drug' },
+  { icon: '🏥', text: "Find a doctor near me",                      cat: 'doctor' },
 ]
 
 const isAskingReminders = t => {
@@ -92,6 +94,7 @@ export default function App() {
   const [inputValue,     setInputValue]     = useState('')
   const [moodHistory,    setMoodHistory]    = useState([])
   const [showBreathing,  setShowBreathing]  = useState(false)
+  const [findingDoctors, setFindingDoctors] = useState(false)
   const [latencies,      setLatencies]      = useState([])
   const [apiCallCount,   setApiCallCount]   = useState(0)
 
@@ -122,6 +125,7 @@ export default function App() {
   const { isNutritionQuery, getNutrition, buildNutritionText } = useNutrition()
   const { isDrugQuery, checkInteraction, buildInteractionText } = useDrugInteraction()
   const { isBMIQuery, calculateBMI, buildBMIText } = useBMI()
+  const { isDoctorQuery, findNearbyDoctors, buildDoctorText } = useDoctorFinder()
   const { isWeatherQuery, getWeather, buildWeatherText } = useWeather()
 
   useEffect(() => { remindersRef.current      = reminders    }, [reminders])
@@ -272,7 +276,7 @@ export default function App() {
     }
     const emotionPrompt = EMOTION_META[detectedEmotion]?.prompt || ''
     sendMessageRef.current(transcript, history, emotionPrompt)
-  }, [isNutritionQuery, isWeatherQuery, isDrugQuery, isBMIQuery, calculateBMI, buildBMIText, checkInteraction, buildInteractionText, showBreathing])
+  }, [isNutritionQuery, isWeatherQuery, isDrugQuery, isBMIQuery, calculateBMI, buildBMIText, checkInteraction, buildInteractionText, showBreathing, isDoctorQuery, findNearbyDoctors, buildDoctorText])
 
   const { isListening, interimText, startListening, stopListening, error } = useSpeech({
     onFinalTranscript: handleFinalTranscript, language,

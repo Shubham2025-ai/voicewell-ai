@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import DrugInteractionCard from './DrugInteractionCard.jsx'
+import DoctorFinderCard from './DoctorFinderCard.jsx'
 import BMICard from './BMICard.jsx'
 
 export default function ChatBubble({ message }) {
@@ -79,6 +80,7 @@ export default function ChatBubble({ message }) {
            : message.weatherCard  ? <WeatherCard  data={message.weatherCard}  />
            : message.drugCard     ? <DrugInteractionCard data={message.drugCard} />
            : message.bmiCard      ? <BMICard data={message.bmiCard} />
+           : message.doctorCard   ? <DoctorFinderCard data={message.doctorCard} />
            : <span className={typing ? 'cursor-blink' : ''}>{displayed}</span>
           }
         </div>
