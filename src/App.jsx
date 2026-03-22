@@ -130,7 +130,10 @@ export default function App() {
   useEffect(() => { getWeatherRef.current    = getWeather     }, [getWeather])
   useEffect(() => { buildWeatherRef.current  = buildWeatherText  }, [buildWeatherText])
 
-  useEffect(() => { document.documentElement.classList.toggle('dark', darkMode) }, [darkMode])
+  useEffect(() => {
+    // Default is dark — toggle 'light' class for light mode
+    document.documentElement.classList.toggle('light', !darkMode)
+  }, [darkMode])
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:'smooth' }) }, [messages, summary])
 
   // Groq response

@@ -4,56 +4,54 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Design tokens ───────────────────────────────── */
 :root {
   --font-display: 'Syne', sans-serif;
   --font-body:    'Instrument Sans', sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 
-  /* Light */
-  --bg:           #f4f7f5;
-  --bg-2:         #edf2ef;
-  --surface:      #ffffff;
-  --surface-2:    #f0f5f2;
-  --surface-3:    #e6ede9;
-  --border:       #d4e2da;
-  --border-2:     #bfd2c8;
-  --text-1:       #0e1f18;
-  --text-2:       #3d6150;
-  --text-3:       #7da08e;
-  --green:        #00c27a;
-  --green-2:      #00a366;
-  --green-dim:    rgba(0,194,122,0.12);
-  --green-glow:   rgba(0,194,122,0.25);
+  /* Pure black theme */
+  --bg:           #080808;
+  --bg-2:         #0f0f0f;
+  --surface:      #111111;
+  --surface-2:    #181818;
+  --surface-3:    #202020;
+  --border:       #222222;
+  --border-2:     #2a2a2a;
+  --text-1:       #f0f0f0;
+  --text-2:       #888888;
+  --text-3:       #444444;
+  --green:        #00e87a;
+  --green-2:      #00c264;
+  --green-dim:    rgba(0,232,122,0.08);
+  --green-glow:   rgba(0,232,122,0.2);
   --red:          #ff3d5a;
   --amber:        #f59e0b;
   --blue:         #3b82f6;
-  --header-bg:    #0e1f18;
-  --radius:       12px;
-  --radius-lg:    20px;
-  --radius-xl:    28px;
-  --shadow:       0 2px 12px rgba(0,0,0,0.07);
-  --shadow-lg:    0 8px 32px rgba(0,0,0,0.12);
+  --purple:       #8b5cf6;
+  --radius:       10px;
+  --radius-lg:    16px;
+  --shadow:       0 1px 8px rgba(0,0,0,0.6);
+  --shadow-lg:    0 4px 24px rgba(0,0,0,0.8);
 }
 
-.dark {
-  --bg:           #060f0b;
-  --bg-2:         #0b1812;
-  --surface:      #0f1e17;
-  --surface-2:    #162a1f;
-  --surface-3:    #1e3828;
-  --border:       #1e3828;
-  --border-2:     #274d38;
-  --text-1:       #dff0e8;
-  --text-2:       #7db896;
-  --text-3:       #3d6150;
-  --green:        #00e892;
-  --green-2:      #00c27a;
-  --green-dim:    rgba(0,232,146,0.08);
-  --green-glow:   rgba(0,232,146,0.2);
-  --header-bg:    #060f0b;
-  --shadow:       0 2px 12px rgba(0,0,0,0.4);
-  --shadow-lg:    0 8px 32px rgba(0,0,0,0.6);
+/* Light mode override */
+.light {
+  --bg:           #fafafa;
+  --bg-2:         #f4f4f4;
+  --surface:      #ffffff;
+  --surface-2:    #f0f0f0;
+  --surface-3:    #e8e8e8;
+  --border:       #e0e0e0;
+  --border-2:     #d0d0d0;
+  --text-1:       #0a0a0a;
+  --text-2:       #666666;
+  --text-3:       #aaaaaa;
+  --green:        #00a854;
+  --green-2:      #008a44;
+  --green-dim:    rgba(0,168,84,0.08);
+  --green-glow:   rgba(0,168,84,0.15);
+  --shadow:       0 1px 8px rgba(0,0,0,0.08);
+  --shadow-lg:    0 4px 24px rgba(0,0,0,0.12);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -62,146 +60,91 @@ body {
   font-family: var(--font-body);
   background: var(--bg);
   color: var(--text-1);
-  transition: background 0.4s, color 0.4s;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-::-webkit-scrollbar { width: 3px; }
+/* Scrollbar */
+::-webkit-scrollbar { width: 3px; height: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 99px; }
 
-/* ── Mic animations ──────────────────────────────── */
-@keyframes mic-ring-1 {
-  0%   { transform: scale(1);    opacity: 0.7; }
-  100% { transform: scale(1.9);  opacity: 0;   }
+/* ── Mic animations ──────────────────────── */
+@keyframes ring-1 {
+  0%   { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2); opacity: 0;   }
 }
-@keyframes mic-ring-2 {
-  0%   { transform: scale(1);    opacity: 0.5; }
-  100% { transform: scale(2.4);  opacity: 0;   }
+@keyframes ring-2 {
+  0%   { transform: scale(1); opacity: 0.4; }
+  100% { transform: scale(2.6); opacity: 0; }
 }
-.mic-pulse-1 { animation: mic-ring-1 1.4s ease-out infinite; }
-.mic-pulse-2 { animation: mic-ring-2 1.4s ease-out infinite 0.4s; }
+.mic-ring-1 { animation: ring-1 1.5s ease-out infinite; }
+.mic-ring-2 { animation: ring-2 1.5s ease-out infinite 0.4s; }
 
-@keyframes mic-breathe {
-  0%,100% { box-shadow: 0 0 0 0 var(--green-glow), 0 4px 20px var(--green-dim); }
-  50%     { box-shadow: 0 0 24px 8px var(--green-glow), 0 4px 30px var(--green-glow); }
+@keyframes breathe {
+  0%,100% { box-shadow: 0 0 0 0 var(--green-glow), 0 4px 20px rgba(0,0,0,0.5); }
+  50%     { box-shadow: 0 0 20px 6px var(--green-glow), 0 4px 30px rgba(0,0,0,0.7); }
 }
-.mic-breathe { animation: mic-breathe 2.5s ease-in-out infinite; }
+.mic-breathe { animation: breathe 2.8s ease-in-out infinite; }
 
-/* ── Waveform ────────────────────────────────────── */
-@keyframes bar-dance {
-  0%,100% { transform: scaleY(0.15); }
-  50%     { transform: scaleY(1); }
+/* ── Waveform ─────────────────────────────── */
+@keyframes wave {
+  0%,100% { transform: scaleY(0.12); opacity: 0.4; }
+  50%     { transform: scaleY(1);    opacity: 1;   }
 }
-.bar-dance { animation: bar-dance 0.65s ease-in-out infinite; transform-origin: bottom; }
+.wave-bar { animation: wave 0.65s ease-in-out infinite; transform-origin: bottom; }
 
-/* ── Bubble entrance ─────────────────────────────── */
-@keyframes pop-right {
-  from { opacity: 0; transform: translateX(20px) scale(0.94); }
+/* ── Bubbles ──────────────────────────────── */
+@keyframes pop-r {
+  from { opacity: 0; transform: translateX(16px) scale(0.95); }
   to   { opacity: 1; transform: none; }
 }
-@keyframes pop-left {
-  from { opacity: 0; transform: translateX(-20px) scale(0.94); }
+@keyframes pop-l {
+  from { opacity: 0; transform: translateX(-16px) scale(0.95); }
   to   { opacity: 1; transform: none; }
 }
-.pop-right { animation: pop-right 0.28s cubic-bezier(0.34,1.56,0.64,1) forwards; }
-.pop-left  { animation: pop-left  0.28s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.pop-r { animation: pop-r 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.pop-l { animation: pop-l 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards; }
 
-/* ── Typing cursor on agent text ─────────────────── */
+/* ── Typewriter cursor ────────────────────── */
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-.cursor-blink::after {
+.cursor::after {
   content: '▋';
-  font-size: 0.8em;
+  font-size: 0.75em;
   animation: blink 0.7s infinite;
   color: var(--green);
+  margin-left: 1px;
 }
 
-/* ── Dots ────────────────────────────────────────── */
+/* ── Typing dots ──────────────────────────── */
 @keyframes dot {
   0%,80%,100% { transform: translateY(0); opacity:0.3; }
-  40% { transform: translateY(-7px); opacity:1; }
+  40%         { transform: translateY(-6px); opacity:1; }
 }
-.d1 { animation: dot 1s infinite 0.00s; }
-.d2 { animation: dot 1s infinite 0.16s; }
-.d3 { animation: dot 1s infinite 0.32s; }
+.d1{animation:dot 1s infinite 0s}
+.d2{animation:dot 1s infinite 0.16s}
+.d3{animation:dot 1s infinite 0.32s}
 
-/* ── Slide in ────────────────────────────────────── */
+/* ── Slide animations ─────────────────────── */
 @keyframes slide-up {
-  from { opacity:0; transform: translateY(14px); }
-  to   { opacity:1; transform: none; }
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:none; }
 }
 .slide-up { animation: slide-up 0.3s ease-out forwards; }
 
-@keyframes slide-right {
-  from { transform: translateX(100%); opacity:0; }
-  to   { transform: none; opacity:1; }
-}
-.slide-right { animation: slide-right 0.3s cubic-bezier(0.34,1.1,0.64,1) forwards; }
-
-/* ── Skeleton ────────────────────────────────────── */
+/* ── Skeleton shimmer ─────────────────────── */
 @keyframes shimmer {
-  from { background-position: -600px 0; }
-  to   { background-position: 600px 0; }
+  from { background-position: -400px 0; }
+  to   { background-position: 400px 0; }
 }
 .skeleton {
   background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
-  background-size: 1200px 100%;
-  animation: shimmer 1.8s infinite;
+  background-size: 800px 100%;
+  animation: shimmer 1.6s infinite;
   border-radius: var(--radius);
 }
 
-/* ── Glow text ───────────────────────────────────── */
-.glow-text {
-  text-shadow: 0 0 20px var(--green-glow);
-}
-
-/* ── Stat card pulse ─────────────────────────────── */
-@keyframes stat-pulse {
-  0%,100% { opacity:1; }
-  50%     { opacity:0.6; }
-}
-.stat-live { animation: stat-pulse 2s ease-in-out infinite; }
-
-/* ── Feature card hover ──────────────────────────── */
-.feature-card {
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-}
-.feature-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px var(--green-dim);
-  border-color: var(--green);
-}
-
-/* ── Chrome warning ──────────────────────────────── */
-@keyframes warn-slide {
-  from { transform: translateY(-100%); }
-  to   { transform: none; }
-}
-.warn-slide { animation: warn-slide 0.3s ease-out; }
-
-/* ── Tooltip ─────────────────────────────────────── */
-[data-tip] { position: relative; }
-[data-tip]:hover::after {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--text-1);
-  color: var(--bg);
-  font-size: 11px;
-  font-family: var(--font-body);
-  padding: 4px 9px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 200;
-}
-
-/* ── Mood timeline bar ───────────────────────────── */
-.mood-bar { transition: width 0.5s ease, background 0.5s ease; }
-
-/* ── Latency badge ───────────────────────────────── */
+/* ── Latency badge ────────────────────────── */
 @keyframes lbadge {
   0%  { opacity:0; transform:scale(0.8); }
   10% { opacity:1; transform:scale(1); }
@@ -209,3 +152,57 @@ body {
   100%{ opacity:0; }
 }
 .lbadge { animation: lbadge 3.5s ease forwards; }
+
+/* ── Feature cards hover ──────────────────── */
+.feat-card {
+  transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+.feat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--green) !important;
+  box-shadow: 0 4px 20px rgba(0,232,122,0.1);
+}
+
+/* ── Tooltip ──────────────────────────────── */
+[data-tip] { position: relative; }
+[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  border: 1px solid var(--border-2);
+  color: var(--text-2);
+  font-size: 10px;
+  font-family: var(--font-mono);
+  padding: 4px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 300;
+}
+
+/* ── Chrome warning ───────────────────────── */
+@keyframes warn-in {
+  from { transform: translateY(-100%); }
+  to   { transform: none; }
+}
+.warn-in { animation: warn-in 0.3s ease-out; }
+
+/* ── Panel slide ──────────────────────────── */
+@keyframes panel-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+.panel-in { animation: panel-in 0.28s cubic-bezier(0.34,1.1,0.64,1) forwards; }
+
+/* ── Mood bar transition ──────────────────── */
+.mood-bar { transition: width 0.5s ease, background 0.5s ease; }
+
+/* ── Glow on active nav item ──────────────── */
+.nav-active {
+  background: linear-gradient(135deg, #00e87a, #00c264) !important;
+  color: #000 !important;
+  box-shadow: 0 2px 12px rgba(0,232,122,0.3);
+}
