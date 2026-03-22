@@ -2,9 +2,42 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VoiceWell AI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- ── Primary SEO ─────────────────────────────────────────────────── -->
+    <title>VoiceWell AI — Your Compassionate Health Voice Companion</title>
+    <meta name="description" content="VoiceWell AI is a voice-first healthcare companion. Speak naturally about symptoms, stress, medications, and nutrition. Powered by Groq AI with emotion detection and Hindi support." />
+    <meta name="keywords" content="voice AI, health assistant, wellness, symptom checker, medication reminder, mental health, Hindi, AI voice agent" />
+    <meta name="author" content="VoiceWell AI" />
+    <meta name="theme-color" content="#0f766e" />
+
+    <!-- ── Open Graph (WhatsApp, LinkedIn previews) ────────────────────── -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:url"         content="https://voicewell-ai.vercel.app/" />
+    <meta property="og:title"       content="VoiceWell AI — Your Health Voice Companion" />
+    <meta property="og:description" content="Talk to VoiceWell — an AI health companion that listens, understands your emotions, and helps with symptoms, stress, medications and nutrition. English + Hindi." />
+    <meta property="og:image"       content="https://voicewell-ai.vercel.app/og-image.png" />
+
+    <!-- ── Twitter Card ────────────────────────────────────────────────── -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="VoiceWell AI — Health Voice Companion" />
+    <meta name="twitter:description" content="Voice-first AI healthcare companion with emotion detection, Hindi support, and medication reminders." />
+    <meta name="twitter:image"       content="https://voicewell-ai.vercel.app/og-image.png" />
+
+    <!-- ── PWA / Installable ───────────────────────────────────────────── -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable"       content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title"   content="VoiceWell AI" />
+
+    <!-- ── Icons ───────────────────────────────────────────────────────── -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>" />
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎙️</text></svg>" />
+
+    <!-- ── Preconnect for faster API calls ─────────────────────────────── -->
+    <link rel="preconnect" href="https://api.groq.com" />
+    <link rel="preconnect" href="https://api-inference.huggingface.co" />
   </head>
   <body>
     <div id="root"></div>

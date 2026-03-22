@@ -108,11 +108,9 @@ export default function App() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, summary])
 
-  // ── Welcome TTS ───────────────────────────────────────────────────────────
-  useEffect(() => {
-    const t = setTimeout(() => speak(WELCOME.content, 'en-US'), 900)
-    return () => clearTimeout(t)
-  }, []) // eslint-disable-line
+  // ── Welcome TTS removed ───────────────────────────────────────────────────
+  // Auto-speak on load is blocked by browsers on HTTPS without user gesture.
+  // TTS works fine after user first interacts (mic click or send button).
 
   // ── Groq response handler ─────────────────────────────────────────────────
   const handleGroqResponse = useCallback((agentText) => {
@@ -259,7 +257,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen relative" style={{ background: 'var(--bg-primary)' }}>
+    <div className="flex flex-col h-screen relative" style={{ background: 'var(--bg-primary)' }} role="main" aria-label="VoiceWell AI Health Companion">
 
       <Header
         language={language}           onLanguageToggle={() => setLanguage(l => l === 'en-US' ? 'hi-IN' : 'en-US')}
@@ -271,7 +269,14 @@ export default function App() {
       />
 
       {/* Chat area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 chat-scroll" style={{ background: 'var(--bg-primary)' }}>
+      <div
+        className="flex-1 overflow-y-auto px-4 py-4 chat-scroll"
+        style={{ background: 'var(--bg-primary)' }}
+        role="log"
+        aria-label="Conversation history"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
 
         {turnCount > 0 && (
           <div className="flex justify-center mb-4">
