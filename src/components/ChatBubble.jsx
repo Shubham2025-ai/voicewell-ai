@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import DrugInteractionCard from './DrugInteractionCard.jsx'
+import BMICard from './BMICard.jsx'
 
 export default function ChatBubble({ message }) {
   const isUser = message.role === 'user'
@@ -75,6 +77,8 @@ export default function ChatBubble({ message }) {
         }}>
           {message.nutritionCard ? <NutritionCard data={message.nutritionCard} />
            : message.weatherCard  ? <WeatherCard  data={message.weatherCard}  />
+           : message.drugCard     ? <DrugInteractionCard data={message.drugCard} />
+           : message.bmiCard      ? <BMICard data={message.bmiCard} />
            : <span className={typing ? 'cursor-blink' : ''}>{displayed}</span>
           }
         </div>

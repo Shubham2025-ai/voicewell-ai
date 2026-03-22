@@ -8,6 +8,7 @@ import SessionSummary  from './components/SessionSummary.jsx'
 import MoodTimeline    from './components/MoodTimeline.jsx'
 import SessionStats    from './components/SessionStats.jsx'
 import ChromeWarning   from './components/ChromeWarning.jsx'
+import BreathingExercise from './components/BreathingExercise.jsx'
 import { useSpeech }   from './hooks/useSpeech.js'
 import { useGroq }     from './hooks/useGroq.js'
 import { useTTS }      from './hooks/useTTS.js'
@@ -15,6 +16,8 @@ import { useEmotion, EMOTION_META } from './hooks/useEmotion.js'
 import { useReminders }  from './hooks/useReminders.js'
 import { useNutrition }  from './hooks/useNutrition.js'
 import { useWeather }    from './hooks/useWeather.js'
+import { useDrugInteraction } from './hooks/useDrugInteraction.js'
+import { useBMI }           from './hooks/useBMI.js'
 import { getTimeString, containsHindi } from './utils/helpers.js'
 
 const WELCOME = {
@@ -39,6 +42,9 @@ const SUGGESTIONS = [
   { icon: '🥗', text: "How many calories in paneer?",           cat: 'nutrition' },
   { icon: '🌤️', text: "What's the air quality in Mumbai?",      cat: 'weather' },
   { icon: '📋', text: "Give me a session summary",              cat: 'summary' },
+  { icon: '🧘', text: "I need a breathing exercise",             cat: 'breathing' },
+  { icon: '📊', text: "My weight is 70kg, height 5 feet 8",      cat: 'bmi' },
+  { icon: '💊', text: "Can I take ibuprofen with aspirin?",       cat: 'drug' },
 ]
 
 const isAskingReminders = t => {
@@ -85,6 +91,7 @@ export default function App() {
   const [isConnected,    setIsConnected]    = useState(true)
   const [inputValue,     setInputValue]     = useState('')
   const [moodHistory,    setMoodHistory]    = useState([])
+  const [showBreathing,  setShowBreathing]  = useState(false)
   const [latencies,      setLatencies]      = useState([])
   const [apiCallCount,   setApiCallCount]   = useState(0)
 
@@ -113,6 +120,8 @@ export default function App() {
   const { emotion, loading: emoLoad, detectEmotion } = useEmotion()
   const { reminders, isMockMode, notifGranted, addReminder, removeReminder, parseReminderText } = useReminders()
   const { isNutritionQuery, getNutrition, buildNutritionText } = useNutrition()
+  const { isDrugQuery, checkInteraction, buildInteractionText } = useDrugInteraction()
+  const { isBMIQuery, calculateBMI, buildBMIText } = useBMI()
   const { isWeatherQuery, getWeather, buildWeatherText } = useWeather()
 
   useEffect(() => { remindersRef.current      = reminders    }, [reminders])
@@ -180,6 +189,14 @@ export default function App() {
     }
 
     // ── Session summary ───────────────────────────────────────────────────
+    // Breathing trigger from voice or button
+    if (t.includes('breathing') || t.includes('breathing exercise') || t.includes('4-7-8') || t.includes('calm down') || t.includes('relax')) {
+      setShowBreathing(true)
+      const reply = "I've opened the breathing exercise for you. The 4-7-8 technique is excellent for stress — let's do it together."
+      setMessages(prev => [...prev, userMsg, { role: 'assistant', content: reply, time: getTimeString() }])
+      speakRef.current?.(reply, lang); return
+    }
+
     if (isAskingSummary(transcript)) {
       setMessages(prev => [...prev, userMsg])
       setLoadingSummary(true)
@@ -249,10 +266,13 @@ export default function App() {
       .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }))
 
     const detectedEmotion = await detectEmotionRef.current(transcript)
-    if (detectedEmotion) setMoodHistory(prev => [...prev.slice(-19), detectedEmotion])
+    if (detectedEmotion) {
+      setMoodHistory(prev => [...prev.slice(-19), detectedEmotion])
+      if (detectedEmotion === 'stressed' && !showBreathing) setShowBreathing(true)
+    }
     const emotionPrompt = EMOTION_META[detectedEmotion]?.prompt || ''
     sendMessageRef.current(transcript, history, emotionPrompt)
-  }, [isNutritionQuery, isWeatherQuery])
+  }, [isNutritionQuery, isWeatherQuery, isDrugQuery, isBMIQuery, calculateBMI, buildBMIText, checkInteraction, buildInteractionText, showBreathing])
 
   const { isListening, interimText, startListening, stopListening, error } = useSpeech({
     onFinalTranscript: handleFinalTranscript, language,
@@ -419,6 +439,14 @@ export default function App() {
                   {EMOTION_META[emotion]?.emoji} {EMOTION_META[emotion]?.label}
                 </div>
               </div>
+            )}
+
+            {/* Breathing exercise widget */}
+            {showBreathing && (
+              <BreathingExercise
+                onClose={() => setShowBreathing(false)}
+                onSpeak={(text) => speakRef.current?.(text, language)}
+              />
             )}
 
             <div ref={chatEndRef} />
