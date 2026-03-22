@@ -19,6 +19,7 @@ import { useWeather }    from './hooks/useWeather.js'
 import { useDrugInteraction } from './hooks/useDrugInteraction.js'
 import { useBMI }           from './hooks/useBMI.js'
 import { useDoctorFinder }  from './hooks/useDoctorFinder.js'
+import { useAppointment }   from './hooks/useAppointment.js'
 import { getTimeString, containsHindi } from './utils/helpers.js'
 
 const WELCOME = {
@@ -47,6 +48,7 @@ const SUGGESTIONS = [
   { icon: '📊', text: "My weight is 70kg, height 5 feet 8",      cat: 'bmi' },
   { icon: '💊', text: "Can I take ibuprofen with aspirin?",       cat: 'drug' },
   { icon: '🏥', text: "Find a doctor near me",                      cat: 'doctor' },
+  { icon: '📅', text: "Book a checkup for tomorrow at 10 AM",        cat: 'appointment' },
 ]
 
 const isAskingReminders = t => {
@@ -126,6 +128,7 @@ export default function App() {
   const { isDrugQuery, checkInteraction, buildInteractionText } = useDrugInteraction()
   const { isBMIQuery, calculateBMI, buildBMIText } = useBMI()
   const { isDoctorQuery, findNearbyDoctors, buildDoctorText } = useDoctorFinder()
+  const { isAppointmentQuery, bookAppointment, buildAppointmentText } = useAppointment()
   const { isWeatherQuery, getWeather, buildWeatherText } = useWeather()
 
   useEffect(() => { remindersRef.current      = reminders    }, [reminders])
@@ -263,6 +266,17 @@ export default function App() {
       setMessages(prev => prev.filter(m => m.role !== 'loading'))
     }
 
+    // ── Appointment booking ──────────────────────────────────────────────
+    if (isAppointmentQuery(transcript)) {
+      setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
+      const data = await bookAppointment(transcript, import.meta.env.VITE_GROQ_API_KEY)
+      const text = buildAppointmentText(data)
+      setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
+        { role:'assistant', content:text, appointmentCard:data, time:getTimeString() }])
+      speakRef.current?.(text, lang)
+      return
+    }
+
     // ── Doctor finder ────────────────────────────────────────────────────
     if (isDoctorQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
@@ -327,7 +341,7 @@ export default function App() {
     }
     const emotionPrompt = EMOTION_META[detectedEmotion]?.prompt || ''
     sendMessageRef.current(transcript, history, emotionPrompt)
-  }, [isNutritionQuery, isWeatherQuery, isDrugQuery, isBMIQuery, calculateBMI, buildBMIText, checkInteraction, buildInteractionText, showBreathing, isDoctorQuery, findNearbyDoctors, buildDoctorText])
+  }, [isNutritionQuery, isWeatherQuery, isDrugQuery, isBMIQuery, calculateBMI, buildBMIText, checkInteraction, buildInteractionText, showBreathing, isDoctorQuery, findNearbyDoctors, buildDoctorText, isAppointmentQuery, bookAppointment, buildAppointmentText])
 
   const { isListening, interimText, startListening, stopListening, error } = useSpeech({
     onFinalTranscript: handleFinalTranscript, language,
