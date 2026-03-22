@@ -58,6 +58,26 @@ export default function Header({
             <EmotionBadge emotion={emotion} loading={emotionLoading} />
           </div>
         )}
+
+        {/* Not medical advice badge */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 5,
+          padding: '3px 10px',
+          borderRadius: 99,
+          background: 'rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,255,255,0.15)',
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.55)',
+          letterSpacing: '0.01em',
+          flexShrink: 0,
+        }}>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <circle cx="5" cy="5" r="4.5" stroke="rgba(255,255,255,0.55)" strokeWidth="1"/>
+            <text x="5" y="7.2" textAnchor="middle" fontSize="6" fill="rgba(255,255,255,0.55)" fontFamily="sans-serif" fontWeight="bold">i</text>
+          </svg>
+          <span className="hidden sm:inline">AI · Not medical advice</span>
+          <span className="sm:hidden">AI</span>
+        </div>
       </div>
 
       {/* Controls */}
