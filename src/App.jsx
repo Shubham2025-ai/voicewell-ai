@@ -6,7 +6,7 @@ import MicButton       from './components/MicButton.jsx'
 import RemindersPanel  from './components/RemindersPanel.jsx'
 import SessionSummary  from './components/SessionSummary.jsx'
 import MoodTimeline    from './components/MoodTimeline.jsx'
-import HealthStats     from './components/HealthStats.jsx'
+import SessionStats    from './components/SessionStats.jsx'
 import ChromeWarning   from './components/ChromeWarning.jsx'
 import { useSpeech }   from './hooks/useSpeech.js'
 import { useGroq }     from './hooks/useGroq.js'
@@ -85,6 +85,8 @@ export default function App() {
   const [isConnected,    setIsConnected]    = useState(true)
   const [inputValue,     setInputValue]     = useState('')
   const [moodHistory,    setMoodHistory]    = useState([])
+  const [latencies,      setLatencies]      = useState([])
+  const [apiCallCount,   setApiCallCount]   = useState(0)
 
   const chatEndRef  = useRef(null)
   const startTime   = useRef(null)
@@ -142,6 +144,8 @@ export default function App() {
       { role: 'assistant', content: agentText, time: getTimeString(), latency }
     ])
     setIsConnected(true)
+    if (latency) setLatencies(prev => [...prev.slice(-9), latency])
+    setApiCallCount(prev => prev + 1)
     speakRef.current?.(agentText, containsHindi(agentText) ? 'hi-IN' : languageRef.current)
   }, [])
 
@@ -217,6 +221,7 @@ export default function App() {
         const text = buildNutrRef.current(data)
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
           { role:'assistant', content:text, nutritionCard:data, time:getTimeString() }])
+        setApiCallCount(prev => prev + 1)
         speakRef.current?.(text, lang); return
       }
       setMessages(prev => prev.filter(m => m.role !== 'loading'))
@@ -255,7 +260,7 @@ export default function App() {
 
   const handleClearChat = () => {
     stop(); setSummary(null); setMoodHistory([])
-    setMessages([{ ...WELCOME, time: getTimeString(), content: "Chat cleared! How can I help you?" }])
+    setMessages([{ ...WELCOME, time: getTimeString(), content: "Chat cleared! How can I help you?" }]); setLatencies([]); setApiCallCount(0)
   }
 
   const turnCount = Math.max(0, messages.filter(m => m.role !== 'loading').length - 1)
@@ -289,8 +294,13 @@ export default function App() {
           overflowY: 'auto',
         }} className="hidden lg:flex">
 
-          {/* Health stats */}
-          <HealthStats turnCount={turnCount} emotion={emotion} />
+          {/* Session stats */}
+          <SessionStats
+            turnCount={turnCount}
+            avgLatency={latencies.length ? Math.round(latencies.reduce((a,b)=>a+b,0)/latencies.length) : null}
+            apiCallCount={apiCallCount}
+            emotionCount={moodHistory.length}
+          />
 
           {/* Mood timeline */}
           {moodHistory.length > 0 && <MoodTimeline history={moodHistory} />}
