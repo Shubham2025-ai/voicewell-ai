@@ -269,11 +269,19 @@ export default function App() {
     // ── Appointment booking ──────────────────────────────────────────────
     if (isAppointmentQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
-      const data = await bookAppointment(transcript, import.meta.env.VITE_GROQ_API_KEY)
-      const text = buildAppointmentText(data)
-      setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
-        { role:'assistant', content:text, appointmentCard:data, time:getTimeString() }])
-      speakRef.current?.(text, lang)
+      try {
+        const data = await bookAppointment(transcript)
+        const text = buildAppointmentText(data)
+        setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
+          { role:'assistant', content:text, appointmentCard:data, time:getTimeString() }])
+        speakRef.current?.(text, lang)
+        setApiCallCount(prev => prev + 1)
+      } catch {
+        const errMsg = "I couldn't create the calendar event right now. Please try again."
+        setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
+          { role:'assistant', content:errMsg, time:getTimeString() }])
+        speakRef.current?.(errMsg, lang)
+      }
       return
     }
 
