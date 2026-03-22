@@ -20,6 +20,8 @@ import { useDrugInteraction } from './hooks/useDrugInteraction.js'
 import { useBMI }           from './hooks/useBMI.js'
 import { useDoctorFinder }  from './hooks/useDoctorFinder.js'
 import { useAppointment }   from './hooks/useAppointment.js'
+import { useWaterIntake }   from './hooks/useWaterIntake.js'
+import { useMealPlanner }   from './hooks/useMealPlanner.js'
 import { getTimeString, containsHindi } from './utils/helpers.js'
 
 const WELCOME = {
@@ -49,6 +51,8 @@ const SUGGESTIONS = [
   { icon: '💊', text: "Can I take ibuprofen with aspirin?",       cat: 'drug' },
   { icon: '🏥', text: "Find a doctor near me",                      cat: 'doctor' },
   { icon: '📅', text: "Book a checkup for tomorrow at 10 AM",        cat: 'appointment' },
+  { icon: '💧', text: "I drank a glass of water",                    cat: 'water' },
+  { icon: '🍽️', text: "Plan my vegetarian meals for the week",       cat: 'meal' },
 ]
 
 const isAskingReminders = t => {
@@ -129,6 +133,8 @@ export default function App() {
   const { isBMIQuery, calculateBMI, buildBMIText } = useBMI()
   const { isDoctorQuery, findNearbyDoctors, buildDoctorText } = useDoctorFinder()
   const { isAppointmentQuery, bookAppointment, buildAppointmentText } = useAppointment()
+  const { isWaterQuery, isLoggingWater, isCheckingWater, logWater, getStatus, buildWaterText, total: waterTotal, pct: waterPct } = useWaterIntake()
+  const { isMealPlanQuery, generateMealPlan, buildMealText } = useMealPlanner()
   const { isWeatherQuery, getWeather, buildWeatherText } = useWeather()
 
   useEffect(() => { remindersRef.current      = reminders    }, [reminders])
@@ -276,6 +282,43 @@ export default function App() {
       return
     }
 
+    // ── Water intake ─────────────────────────────────────────────────────
+    if (isWaterQuery(transcript)) {
+      if (isLoggingWater(transcript)) {
+        const data = logWater(transcript)
+        const text = buildWaterText(data, 'log')
+        setMessages(prev => [...prev, userMsg,
+          { role:'assistant', content:text, waterCard:{...data, log:[]}, waterType:'log', time:getTimeString() }])
+        speakRef.current?.(text, lang)
+      } else {
+        const data = getStatus()
+        const text = buildWaterText(data, 'status')
+        setMessages(prev => [...prev, userMsg,
+          { role:'assistant', content:text, waterCard:data, waterType:'status', time:getTimeString() }])
+        speakRef.current?.(text, lang)
+      }
+      return
+    }
+
+    // ── Meal planner ──────────────────────────────────────────────────────
+    if (isMealPlanQuery(transcript)) {
+      setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
+      try {
+        const plan = await generateMealPlan(transcript, import.meta.env.VITE_GROQ_API_KEY)
+        const text = buildMealText(plan)
+        setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
+          { role:'assistant', content:text, mealPlanCard:plan, time:getTimeString() }])
+        speakRef.current?.(text, lang)
+        setApiCallCount(prev => prev + 1)
+      } catch {
+        const errMsg = "I couldn't generate a meal plan right now. Please try again."
+        setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
+          { role:'assistant', content:errMsg, time:getTimeString() }])
+        speakRef.current?.(errMsg, lang)
+      }
+      return
+    }
+
     // ── Doctor finder ────────────────────────────────────────────────────
     if (isDoctorQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
@@ -340,7 +383,7 @@ export default function App() {
     }
     const emotionPrompt = EMOTION_META[detectedEmotion]?.prompt || ''
     sendMessageRef.current(transcript, history, emotionPrompt)
-  }, [isNutritionQuery, isWeatherQuery, isDrugQuery, isBMIQuery, calculateBMI, buildBMIText, checkInteraction, buildInteractionText, showBreathing, isDoctorQuery, findNearbyDoctors, buildDoctorText, isAppointmentQuery, bookAppointment, buildAppointmentText])
+  }, [isNutritionQuery, isWeatherQuery, isDrugQuery, isBMIQuery, calculateBMI, buildBMIText, checkInteraction, buildInteractionText, showBreathing, isDoctorQuery, findNearbyDoctors, buildDoctorText, isAppointmentQuery, bookAppointment, buildAppointmentText, isWaterQuery, isLoggingWater, isCheckingWater, logWater, getStatus, buildWaterText, isMealPlanQuery, generateMealPlan, buildMealText])
 
   const { isListening, interimText, startListening, stopListening, error } = useSpeech({
     onFinalTranscript: handleFinalTranscript, language,
@@ -426,6 +469,22 @@ export default function App() {
               ))}
             </div>
           </div>
+
+          {/* Water tracker */}
+          {waterTotal > 0 && (
+            <div style={{ padding:'10px 12px', borderRadius:'var(--radius)', background:'var(--surface-2)', border:'1px solid var(--border)' }}>
+              <div style={{ fontSize:10, fontWeight:600, color:'var(--text-3)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8, fontFamily:'var(--font-mono)' }}>
+                💧 Water today
+              </div>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
+                <span style={{ fontSize:13, fontWeight:700, color:'#60a5fa', fontFamily:'var(--font-mono)' }}>{waterTotal}ml</span>
+                <span style={{ fontSize:11, color:'var(--text-3)', fontFamily:'var(--font-mono)' }}>{waterPct}%</span>
+              </div>
+              <div style={{ height:4, borderRadius:99, background:'var(--border)', overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${waterPct}%`, background: waterPct>=100?'var(--green)':'#60a5fa', borderRadius:99, transition:'width 0.5s' }}/>
+              </div>
+            </div>
+          )}
 
           {/* Reminders list */}
           {reminders.length > 0 && (
