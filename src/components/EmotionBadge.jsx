@@ -1,26 +1,19 @@
 import React from 'react'
 import { EMOTION_META } from '../hooks/useEmotion.js'
 
-/**
- * EmotionBadge — shows the currently detected emotion with emoji + label.
- * Sits in the header area. Fades in on change.
- */
 export default function EmotionBadge({ emotion, loading }) {
-  const meta = EMOTION_META[emotion] || EMOTION_META.neutral
-
+  const m = EMOTION_META[emotion] || EMOTION_META.neutral
   return (
-    <div
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-500"
-      style={{
-        background: meta.bg,
-        color:      meta.color,
-        border:     `1px solid ${meta.color}30`,
-        opacity:    loading ? 0.5 : 1,
-      }}
-      title={`Detected mood: ${meta.label}`}
-    >
-      <span style={{ fontSize: '14px' }}>{meta.emoji}</span>
-      <span>{loading ? 'Detecting…' : meta.label}</span>
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '3px 10px', borderRadius: 99,
+      background: m.bg, border: `1px solid ${m.color}30`,
+      fontSize: 11, fontWeight: 500, color: m.color,
+      transition: 'all 0.4s', opacity: loading ? 0.5 : 1,
+      fontFamily: 'var(--font-body)',
+    }}>
+      <span style={{ fontSize: 13 }}>{m.emoji}</span>
+      {m.label}
     </div>
   )
 }

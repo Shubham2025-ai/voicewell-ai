@@ -1,117 +1,108 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 export default function ChatBubble({ message }) {
   const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
+  const [displayed, setDisplayed] = useState(isUser ? message.content : '')
+  const [typing, setTyping] = useState(false)
+
+  // Typewriter effect for agent messages
+  useEffect(() => {
+    if (isUser || message.nutritionCard || message.weatherCard) {
+      setDisplayed(message.content)
+      return
+    }
+    setTyping(true)
+    setDisplayed('')
+    const text = message.content
+    let i = 0
+    const speed = Math.max(12, Math.min(30, 1200 / text.length)) // adaptive speed
+    const timer = setInterval(() => {
+      i++
+      setDisplayed(text.slice(0, i))
+      if (i >= text.length) { clearInterval(timer); setTyping(false) }
+    }, speed)
+    return () => clearInterval(timer)
+  }, [message.content, isUser]) // eslint-disable-line
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.content).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setCopied(true); setTimeout(() => setCopied(false), 2000)
     })
   }
 
   return (
-    <div className={isUser ? 'bubble-right' : 'bubble-left'} style={{
+    <div className={isUser ? 'pop-right' : 'pop-left'} style={{
       display: 'flex',
       flexDirection: isUser ? 'row-reverse' : 'row',
-      alignItems: 'flex-end',
-      gap: 8,
-      marginBottom: 12,
+      alignItems: 'flex-end', gap: 8, marginBottom: 14,
     }}>
       {/* Avatar */}
       <div style={{
-        width: 30, height: 30,
-        borderRadius: isUser ? '10px 10px 2px 10px' : '10px 10px 10px 2px',
+        width: 28, height: 28, borderRadius: isUser ? '8px 8px 2px 8px' : '8px 8px 8px 2px',
         background: isUser
-          ? 'linear-gradient(135deg, #667eea, #764ba2)'
-          : 'var(--accent)',
+          ? 'linear-gradient(135deg,#6366f1,#8b5cf6)'
+          : 'var(--green)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 12, fontWeight: 600, color: '#fff',
+        fontSize: 11, fontWeight: 700, color: isUser ? '#fff' : '#000',
         flexShrink: 0,
-        boxShadow: isUser ? 'none' : '0 0 8px var(--accent-glow)',
-        letterSpacing: '-0.3px',
+        boxShadow: isUser ? 'none' : '0 0 10px var(--green-glow)',
+        fontFamily: 'var(--font-display)',
       }}>
-        {isUser ? 'You' : '✦'}
+        {isUser ? 'U' : '✦'}
       </div>
 
-      {/* Content */}
       <div style={{
-        maxWidth: '72%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: isUser ? 'flex-end' : 'flex-start',
-        gap: 4,
+        maxWidth: '74%', display: 'flex', flexDirection: 'column',
+        alignItems: isUser ? 'flex-end' : 'flex-start', gap: 4,
       }}>
-        <div
-          className="group"
-          style={{
-            padding: '10px 14px',
-            borderRadius: isUser
-              ? '16px 16px 4px 16px'
-              : '16px 16px 16px 4px',
-            fontSize: 14,
-            lineHeight: 1.6,
-            ...(isUser ? {
-              background: 'linear-gradient(135deg, #667eea, #764ba2)',
-              color: '#fff',
-              boxShadow: '0 2px 12px rgba(102,126,234,0.3)',
-            } : {
-              background: 'var(--surface)',
-              color: 'var(--text-1)',
-              border: '1px solid var(--border)',
-              boxShadow: 'var(--shadow-sm)',
-            }),
-          }}
-        >
-          {message.nutritionCard ? (
-            <NutritionCard data={message.nutritionCard} />
-          ) : message.weatherCard ? (
-            <WeatherCard data={message.weatherCard} />
-          ) : (
-            message.content
-          )}
+        <div style={{
+          padding: '10px 14px',
+          fontSize: 14, lineHeight: 1.65,
+          fontFamily: 'var(--font-body)',
+          ...(isUser ? {
+            background: 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+            color: '#fff',
+            borderRadius: '16px 16px 4px 16px',
+            boxShadow: '0 3px 14px rgba(99,102,241,0.3)',
+          } : {
+            background: 'var(--surface)',
+            color: 'var(--text-1)',
+            border: '1px solid var(--border)',
+            borderRadius: '16px 16px 16px 4px',
+            boxShadow: 'var(--shadow)',
+          }),
+        }}>
+          {message.nutritionCard ? <NutritionCard data={message.nutritionCard} />
+           : message.weatherCard  ? <WeatherCard  data={message.weatherCard}  />
+           : <span className={typing ? 'cursor-blink' : ''}>{displayed}</span>
+          }
         </div>
 
         {/* Footer */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
+          display: 'flex', alignItems: 'center', gap: 8,
           flexDirection: isUser ? 'row-reverse' : 'row',
         }}>
-          <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
             {message.time}
           </span>
-          {!isUser && (
-            <button
-              onClick={handleCopy}
-              style={{
-                fontSize: 11,
-                padding: '2px 8px',
-                borderRadius: 6,
-                border: '1px solid var(--border)',
-                background: 'var(--surface-2)',
-                color: 'var(--text-3)',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-body)',
-                transition: 'all 0.15s',
-              }}
-            >
-              {copied ? '✓ Copied' : 'Copy'}
+          {!isUser && !typing && (
+            <button onClick={handleCopy} style={{
+              fontSize: 10, padding: '2px 7px', borderRadius: 5,
+              border: '1px solid var(--border)', background: 'var(--surface-2)',
+              color: 'var(--text-3)', cursor: 'pointer', fontFamily: 'var(--font-body)',
+              transition: 'all 0.15s',
+            }}>
+              {copied ? '✓ copied' : 'copy'}
             </button>
           )}
           {!isUser && message.latency && (
-            <span className="latency-badge" style={{
-              fontSize: 10,
-              padding: '2px 6px',
-              borderRadius: 6,
-              background: 'var(--accent-bg)',
-              color: 'var(--accent-2)',
+            <span className="lbadge" style={{
+              fontSize: 9, padding: '2px 6px', borderRadius: 5,
+              background: 'var(--green-dim)', color: 'var(--green-2)',
               fontFamily: 'var(--font-mono)',
-            }}>
-              {message.latency}ms
-            </span>
+            }}>{message.latency}ms</span>
           )}
         </div>
       </div>
@@ -121,26 +112,22 @@ export default function ChatBubble({ message }) {
 
 function NutritionCard({ data }) {
   const items = [
-    { label: 'Calories', value: `${data.calories}`, unit: 'kcal', color: '#ff6b6b' },
-    { label: 'Protein',  value: `${data.protein}`,  unit: 'g',    color: '#4ecdc4' },
-    { label: 'Carbs',    value: `${data.carbs}`,    unit: 'g',    color: '#45b7d1' },
-    { label: 'Fat',      value: `${data.fat}`,      unit: 'g',    color: '#f7dc6f' },
+    { l:'Cal',     v:`${data.calories}`, u:'kcal', c:'#ff6b6b' },
+    { l:'Protein', v:`${data.protein}`,  u:'g',    c:'var(--green)' },
+    { l:'Carbs',   v:`${data.carbs}`,    u:'g',    c:'#60a5fa' },
+    { l:'Fat',     v:`${data.fat}`,      u:'g',    c:'#fbbf24' },
   ]
   return (
     <div>
-      <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 13 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13, marginBottom: 10 }}>
         🥗 {data.name}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        {items.map(({ label, value, unit, color }) => (
-          <div key={label} style={{
-            background: 'rgba(255,255,255,0.08)',
-            borderRadius: 8,
-            padding: '6px 10px',
-          }}>
-            <div style={{ fontSize: 10, opacity: 0.7, marginBottom: 2 }}>{label}</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color }}>
-              {value}<span style={{ fontSize: 10, fontWeight: 400, opacity: 0.8, marginLeft: 2 }}>{unit}</span>
+        {items.map(({ l, v, u, c }) => (
+          <div key={l} style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 8, padding: '6px 10px' }}>
+            <div style={{ fontSize: 10, opacity: 0.65, marginBottom: 1 }}>{l}</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: c, fontFamily: 'var(--font-display)' }}>
+              {v}<span style={{ fontSize: 10, opacity: 0.7, marginLeft: 2 }}>{u}</span>
             </div>
           </div>
         ))}
@@ -150,30 +137,28 @@ function NutritionCard({ data }) {
 }
 
 function WeatherCard({ data }) {
-  const aqiColor = ['', '#00c896', '#f59e0b', '#f59e0b', '#ef4444', '#9b2335'][data.aqi] || '#8896a5'
+  const aqiColors = ['','#00c27a','#f59e0b','#f59e0b','#ef4444','#9b2335']
   return (
     <div>
-      <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
         🌤️ {data.city}
       </div>
-      <div style={{ fontSize: 24, fontWeight: 300, marginBottom: 4 }}>{data.temp}°C</div>
-      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8, textTransform: 'capitalize' }}>{data.description}</div>
+      <div style={{ fontSize: 26, fontWeight: 300, fontFamily: 'var(--font-display)', marginBottom: 2 }}>
+        {data.temp}°C
+      </div>
+      <div style={{ fontSize: 12, opacity: 0.75, marginBottom: 8, textTransform: 'capitalize' }}>
+        {data.description}
+      </div>
       {data.aqi && (
         <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          background: 'rgba(255,255,255,0.1)',
-          padding: '4px 10px', borderRadius: 99,
-          fontSize: 12,
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          background: 'rgba(255,255,255,0.1)', padding: '3px 10px', borderRadius: 99, fontSize: 11,
         }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: aqiColor }} />
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: aqiColors[data.aqi] || '#888' }} />
           AQI {data.aqi} · {data.aqiLabel}
         </div>
       )}
-      {data.tip && (
-        <div style={{ fontSize: 12, marginTop: 8, opacity: 0.85, fontStyle: 'italic' }}>
-          {data.tip}
-        </div>
-      )}
+      {data.tip && <div style={{ fontSize: 11, marginTop: 8, opacity: 0.8, fontStyle: 'italic' }}>{data.tip}</div>}
     </div>
   )
 }
