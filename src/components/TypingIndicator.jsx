@@ -2,23 +2,41 @@ import React from 'react'
 
 export default function TypingIndicator() {
   return (
-    <div className="flex items-end gap-2 mb-3 bubble-enter">
-      <div
-        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-        style={{ background: 'var(--teal)', color: '#fff' }}
-      >
-        VW
+    <div className="bubble-left" style={{
+      display: 'flex', alignItems: 'flex-end', gap: 8, marginBottom: 12,
+    }}>
+      <div style={{
+        width: 30, height: 30,
+        borderRadius: '10px 10px 10px 2px',
+        background: 'var(--accent)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 12, fontWeight: 600, color: '#fff',
+        boxShadow: '0 0 8px var(--accent-glow)',
+        flexShrink: 0,
+      }}>
+        ✦
       </div>
-      <div
-        className="px-4 py-3 rounded-2xl rounded-bl-sm flex items-center gap-1.5 shadow-sm"
-        style={{
-          background: 'var(--bubble-agent-bg)',
-          border: '1px solid var(--border)',
-        }}
-      >
-        <div className="w-2 h-2 rounded-full dot-1" style={{ background: 'var(--teal)' }} />
-        <div className="w-2 h-2 rounded-full dot-2" style={{ background: 'var(--teal)' }} />
-        <div className="w-2 h-2 rounded-full dot-3" style={{ background: 'var(--teal)' }} />
+      <div style={{
+        padding: '12px 16px',
+        borderRadius: '16px 16px 16px 4px',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-sm)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 5,
+      }}>
+        {[1,2,3].map(i => (
+          <div
+            key={i}
+            className={`dot-${i}`}
+            style={{
+              width: 7, height: 7,
+              borderRadius: '50%',
+              background: 'var(--accent)',
+            }}
+          />
+        ))}
       </div>
     </div>
   )

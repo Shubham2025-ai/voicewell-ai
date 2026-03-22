@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 
 export default function ChatBubble({ message }) {
-  const isUser  = message.role === 'user'
+  const isUser = message.role === 'user'
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
@@ -12,38 +12,58 @@ export default function ChatBubble({ message }) {
   }
 
   return (
-    <div className={`flex w-full mb-3 items-end gap-2 ${isUser ? 'bubble-user flex-row-reverse' : 'bubble-agent flex-row'}`}>
-
+    <div className={isUser ? 'bubble-right' : 'bubble-left'} style={{
+      display: 'flex',
+      flexDirection: isUser ? 'row-reverse' : 'row',
+      alignItems: 'flex-end',
+      gap: 8,
+      marginBottom: 12,
+    }}>
       {/* Avatar */}
-      <div
-        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mb-1 shadow-sm"
-        style={{
-          background: isUser ? '#475569' : 'var(--teal)',
-          color: '#fff',
-          fontSize: '10px',
-        }}
-      >
-        {isUser ? 'You' : 'VW'}
+      <div style={{
+        width: 30, height: 30,
+        borderRadius: isUser ? '10px 10px 2px 10px' : '10px 10px 10px 2px',
+        background: isUser
+          ? 'linear-gradient(135deg, #667eea, #764ba2)'
+          : 'var(--accent)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 12, fontWeight: 600, color: '#fff',
+        flexShrink: 0,
+        boxShadow: isUser ? 'none' : '0 0 8px var(--accent-glow)',
+        letterSpacing: '-0.3px',
+      }}>
+        {isUser ? 'You' : '✦'}
       </div>
 
-      {/* Bubble + footer */}
-      <div className={`group relative max-w-[78%] flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
+      {/* Content */}
+      <div style={{
+        maxWidth: '72%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: isUser ? 'flex-end' : 'flex-start',
+        gap: 4,
+      }}>
         <div
-          className="px-4 py-2.5 text-sm leading-relaxed"
-          style={isUser ? {
-            background: 'var(--teal)',
-            color: '#fff',
-            borderRadius: '18px 18px 4px 18px',
-            boxShadow: '0 2px 8px rgba(13,148,136,0.25)',
-          } : {
-            background: 'var(--bubble-agent-bg)',
-            color: 'var(--bubble-agent-text)',
-            border: '1px solid var(--border)',
-            borderRadius: '18px 18px 18px 4px',
-            boxShadow: 'var(--card-shadow)',
+          className="group"
+          style={{
+            padding: '10px 14px',
+            borderRadius: isUser
+              ? '16px 16px 4px 16px'
+              : '16px 16px 16px 4px',
+            fontSize: 14,
+            lineHeight: 1.6,
+            ...(isUser ? {
+              background: 'linear-gradient(135deg, #667eea, #764ba2)',
+              color: '#fff',
+              boxShadow: '0 2px 12px rgba(102,126,234,0.3)',
+            } : {
+              background: 'var(--surface)',
+              color: 'var(--text-1)',
+              border: '1px solid var(--border)',
+              boxShadow: 'var(--shadow-sm)',
+            }),
           }}
         >
-          {/* Nutrition card embedded in bubble */}
           {message.nutritionCard ? (
             <NutritionCard data={message.nutritionCard} />
           ) : message.weatherCard ? (
@@ -53,25 +73,43 @@ export default function ChatBubble({ message }) {
           )}
         </div>
 
-        {/* Footer: time + copy + latency */}
-        <div className={`flex items-center gap-2 mt-1 px-1 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-          <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{message.time}</span>
-
+        {/* Footer */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexDirection: isUser ? 'row-reverse' : 'row',
+        }}>
+          <span style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
+            {message.time}
+          </span>
           {!isUser && (
             <button
               onClick={handleCopy}
-              className="opacity-0 group-hover:opacity-100 transition-all duration-200 text-xs px-2 py-0.5 rounded-md hover:scale-105"
-              style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+              style={{
+                fontSize: 11,
+                padding: '2px 8px',
+                borderRadius: 6,
+                border: '1px solid var(--border)',
+                background: 'var(--surface-2)',
+                color: 'var(--text-3)',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-body)',
+                transition: 'all 0.15s',
+              }}
             >
-              {copied ? '✅' : '📋'}
+              {copied ? '✓ Copied' : 'Copy'}
             </button>
           )}
-
           {!isUser && message.latency && (
-            <span
-              className="text-xs px-1.5 py-0.5 rounded-md latency-badge font-mono"
-              style={{ background: 'var(--teal-light)', color: 'var(--teal-dark)' }}
-            >
+            <span className="latency-badge" style={{
+              fontSize: 10,
+              padding: '2px 6px',
+              borderRadius: 6,
+              background: 'var(--accent-bg)',
+              color: 'var(--accent-2)',
+              fontFamily: 'var(--font-mono)',
+            }}>
               {message.latency}ms
             </span>
           )}
@@ -81,55 +119,61 @@ export default function ChatBubble({ message }) {
   )
 }
 
-/* ── Nutrition card ──────────────────────────────────────── */
 function NutritionCard({ data }) {
+  const items = [
+    { label: 'Calories', value: `${data.calories}`, unit: 'kcal', color: '#ff6b6b' },
+    { label: 'Protein',  value: `${data.protein}`,  unit: 'g',    color: '#4ecdc4' },
+    { label: 'Carbs',    value: `${data.carbs}`,    unit: 'g',    color: '#45b7d1' },
+    { label: 'Fat',      value: `${data.fat}`,      unit: 'g',    color: '#f7dc6f' },
+  ]
   return (
-    <div className="pop-in">
-      <div className="font-semibold mb-2 flex items-center gap-2">
-        <span>🥗</span> {data.name}
+    <div>
+      <div style={{ fontWeight: 600, marginBottom: 10, fontSize: 13 }}>
+        🥗 {data.name}
       </div>
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        {[
-          { label: 'Calories', value: `${data.calories} kcal`, icon: '🔥' },
-          { label: 'Protein',  value: `${data.protein}g`,      icon: '💪' },
-          { label: 'Carbs',    value: `${data.carbs}g`,        icon: '🌾' },
-          { label: 'Fat',      value: `${data.fat}g`,          icon: '🫒' },
-        ].map(({ label, value, icon }) => (
-          <div
-            key={label}
-            className="rounded-lg px-2 py-1.5 flex items-center gap-1"
-            style={{ background: 'rgba(255,255,255,0.15)' }}
-          >
-            <span>{icon}</span>
-            <div>
-              <div style={{ opacity: 0.75, fontSize: '10px' }}>{label}</div>
-              <div className="font-semibold">{value}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {items.map(({ label, value, unit, color }) => (
+          <div key={label} style={{
+            background: 'rgba(255,255,255,0.08)',
+            borderRadius: 8,
+            padding: '6px 10px',
+          }}>
+            <div style={{ fontSize: 10, opacity: 0.7, marginBottom: 2 }}>{label}</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color }}>
+              {value}<span style={{ fontSize: 10, fontWeight: 400, opacity: 0.8, marginLeft: 2 }}>{unit}</span>
             </div>
           </div>
         ))}
       </div>
-      {data.text && <div className="mt-2 text-xs opacity-80">{data.text}</div>}
     </div>
   )
 }
 
-/* ── Weather card ────────────────────────────────────────── */
 function WeatherCard({ data }) {
+  const aqiColor = ['', '#00c896', '#f59e0b', '#f59e0b', '#ef4444', '#9b2335'][data.aqi] || '#8896a5'
   return (
-    <div className="pop-in">
-      <div className="font-semibold mb-1 flex items-center gap-2">
-        <span>🌤️</span> {data.city} Weather
+    <div>
+      <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+        🌤️ {data.city}
       </div>
-      <div className="text-xs opacity-90 mb-1">{data.description} · {data.temp}°C</div>
+      <div style={{ fontSize: 24, fontWeight: 300, marginBottom: 4 }}>{data.temp}°C</div>
+      <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 8, textTransform: 'capitalize' }}>{data.description}</div>
       {data.aqi && (
-        <div
-          className="text-xs px-2 py-1 rounded-lg inline-block mt-1"
-          style={{ background: 'rgba(255,255,255,0.2)' }}
-        >
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'rgba(255,255,255,0.1)',
+          padding: '4px 10px', borderRadius: 99,
+          fontSize: 12,
+        }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: aqiColor }} />
           AQI {data.aqi} · {data.aqiLabel}
         </div>
       )}
-      {data.tip && <div className="mt-2 text-xs opacity-85">💡 {data.tip}</div>}
+      {data.tip && (
+        <div style={{ fontSize: 12, marginTop: 8, opacity: 0.85, fontStyle: 'italic' }}>
+          {data.tip}
+        </div>
+      )}
     </div>
   )
 }
