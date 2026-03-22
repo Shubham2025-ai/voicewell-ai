@@ -263,6 +263,50 @@ export default function App() {
       setMessages(prev => prev.filter(m => m.role !== 'loading'))
     }
 
+    // ── Doctor finder ────────────────────────────────────────────────────
+    if (isDoctorQuery(transcript)) {
+      setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
+      try {
+        const data = await findNearbyDoctors(transcript)
+        const text = buildDoctorText(data)
+        setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
+          { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
+        speakRef.current?.(text, lang)
+      } catch (err) {
+        const errMsg = err.message?.includes('denied')
+          ? "I need your location to find nearby doctors. Please tap Allow when the browser asks for location access."
+          : "I couldn't access your location right now. Try searching on Practo or Google Maps for doctors near you."
+        setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
+          { role:'assistant', content:errMsg, time:getTimeString() }])
+        speakRef.current?.(errMsg, lang)
+      }
+      return
+    }
+
+    // ── Drug interaction ──────────────────────────────────────────────────
+    if (isDrugQuery(transcript)) {
+      setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
+      const data = await checkInteraction(transcript)
+      if (data) {
+        const text = buildInteractionText(data)
+        setMessages(prev => [...prev.filter(m=>m.role!=='loading'),
+          { role:'assistant', content:text, drugCard:data, time:getTimeString() }])
+        speakRef.current?.(text, lang); return
+      }
+      setMessages(prev => prev.filter(m => m.role !== 'loading'))
+    }
+
+    // ── BMI calculator ────────────────────────────────────────────────────
+    if (isBMIQuery(transcript)) {
+      const data = calculateBMI(transcript)
+      if (data) {
+        const text = buildBMIText(data)
+        setMessages(prev => [...prev, userMsg,
+          { role:'assistant', content:text, bmiCard:data, time:getTimeString() }])
+        speakRef.current?.(text, lang); return
+      }
+    }
+
     // ── Default: Groq ─────────────────────────────────────────────────────
     setMessages(prev => [...prev, userMsg, { role: 'loading', content: '', time: '' }])
     const history = messagesRef.current
