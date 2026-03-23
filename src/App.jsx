@@ -2,13 +2,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 
 // Layout
 import Header          from './components/Header.jsx'
+import HomePage        from './components/HomePage.jsx'
 import ChromeWarning   from './components/ChromeWarning.jsx'
 
 // Voice page components
-import ChatBubble      from './components/ChatBubble.jsx'
-import { Waveform, TypingIndicator, ContextPill } from './components/VoiceComponents.jsx'
-import MicButton       from './components/MicButton.jsx'
-import SessionSummary  from './components/SessionSummary.jsx'
 
 // Feature pages
 import HealthPage      from './components/HealthPage.jsx'
@@ -376,86 +373,23 @@ export default function App() {
       {/* Page content */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
-        {/* ── HOME: Voice Chat ─────────────────────────────────────────── */}
+        {/* ── HOME PAGE ────────────────────────────────────────────────── */}
         {activePage === 'home' && (
-          <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-            {/* Chat messages */}
-            <div style={{ flex:1, overflowY:'auto', padding:'1.25rem 1rem' }}>
-              {turnCount > 0 && (
-                <div style={{ display:'flex', justifyContent:'center', marginBottom:14 }}>
-                  <ContextPill turnCount={turnCount} />
-                </div>
-              )}
-              {messages.map((msg, idx) =>
-                msg.role === 'loading'
-                  ? <TypingIndicator key={idx} />
-                  : <ChatBubble key={idx} message={msg} />
-              )}
-              {loadingSummary && (
-                <div style={{ textAlign:'center', padding:'1rem', color:'var(--text-3)', fontSize:13 }}>
-                  ✨ Generating session summary…
-                </div>
-              )}
-              {summary && (
-                <SessionSummary
-                  summary={summary}
-                  onClose={() => setSummary(null)}
-                  onSpeak={text => speak(text, language)}
-                />
-              )}
-              {interimText && (
-                <div className="pop-right" style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }}>
-                  <div style={{
-                    padding:'8px 14px', fontSize:13, fontStyle:'italic',
-                    borderRadius:'16px 16px 4px 16px',
-                    background:'var(--green-dim)', border:'1px dashed var(--green-2)',
-                    color:'var(--text-2)',
-                  }}>{interimText}…</div>
-                </div>
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Voice input zone */}
-            <div style={{ borderTop:'1px solid var(--border)', background:'var(--surface)', padding:'0.875rem 1rem 1rem', flexShrink:0 }}>
-              <Waveform isActive={isSpeaking} />
-              <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:10 }}>
-                <MicButton
-                  isListening={isListening} isSpeaking={isSpeaking}
-                  onClick={() => isListening ? stopListening() : startListening()}
-                  onStop={stop} error={error}
-                />
-                <div style={{ flex:1 }}>
-                  <form onSubmit={e => { e.preventDefault(); if (!inputValue.trim()) return; handleFinalTranscript(inputValue.trim()); setInputValue('') }}
-                    style={{ display:'flex', gap:8 }}>
-                    <input
-                      type="text" value={inputValue}
-                      onChange={e => setInputValue(e.target.value)}
-                      disabled={isListening || isSpeaking || isLoading}
-                      placeholder="Or type your message…"
-                      style={{
-                        flex:1, padding:'9px 14px', borderRadius:99,
-                        border:'1px solid var(--border)', background:'var(--surface-2)',
-                        color:'var(--text-1)', fontSize:13, fontFamily:'var(--font-body)', outline:'none',
-                      }}
-                      onFocus={e => e.target.style.borderColor='var(--green)'}
-                      onBlur={e  => e.target.style.borderColor='var(--border)'}
-                    />
-                    <button type="submit" disabled={isListening||isSpeaking||isLoading||!inputValue.trim()}
-                      style={{ padding:'9px 18px', borderRadius:99, border:'none', background:'var(--green)', color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'var(--font-display)', opacity:(!inputValue.trim()||isLoading)?0.4:1 }}>
-                      Send
-                    </button>
-                  </form>
-                  <div style={{ display:'flex', justifyContent:'space-between', marginTop:5, padding:'0 4px' }}>
-                    <span style={{ fontSize:9, color:'var(--text-3)', fontFamily:'var(--font-mono)' }}>
-                      Chrome only · No audio stored · Privacy first
-                    </span>
-                    {isLoading && <span style={{ fontSize:9, color:'var(--green)', fontFamily:'var(--font-mono)' }}>thinking…</span>}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <HomePage
+            messages={messages}
+            isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}
+            interimText={interimText} turnCount={turnCount}
+            summary={summary} loadingSummary={loadingSummary}
+            showBreathing={showBreathing} emotion={emotion}
+            inputValue={inputValue} setInputValue={setInputValue}
+            onMicClick={() => isListening ? stopListening() : startListening()}
+            onStop={stop}
+            onSend={e => { e.preventDefault(); if (!inputValue.trim()) return; handleFinalTranscript(inputValue.trim()); setInputValue('') }}
+            onCloseSummary={() => setSummary(null)}
+            onSpeak={speak} speak={speak} language={language}
+            onNavigate={setActivePage} error={error}
+            onQuery={handleFinalTranscript}
+          />
         )}
 
         {/* ── HEALTH PAGE ──────────────────────────────────────────────── */}
