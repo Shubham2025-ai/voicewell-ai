@@ -5,18 +5,38 @@ import MicButton       from './MicButton.jsx'
 import SessionSummary  from './SessionSummary.jsx'
 
 const SUGGESTIONS = [
-  { icon:'🤒', text:'I have a headache since morning'   },
-  { icon:'😰', text:"I'm feeling very stressed"         },
-  { icon:'📊', text:'My weight is 70kg, height 170cm'   },
-  { icon:'💊', text:'Can I take ibuprofen with aspirin?' },
-  { icon:'🏥', text:'Find a doctor near me'             },
-  { icon:'💧', text:'I drank a glass of water'          },
+  { icon:'🤒', text:'I have a headache'          },
+  { icon:'😰', text:"I'm feeling stressed"        },
+  { icon:'📊', text:'Calculate my BMI'            },
+  { icon:'💊', text:'Drug interaction check'      },
+  { icon:'🏥', text:'Find doctor near me'         },
+  { icon:'💧', text:'Log water intake'            },
+  { icon:'🍽️', text:'Plan my meals'              },
+  { icon:'📅', text:'Book an appointment'         },
 ]
 
-const FEATURES = [
-  '🎙️ Voice AI','😰 Emotion Detection','🇮🇳 Hindi Support',
-  '💊 Med Reminders','🏥 Doctor Finder','📊 BMI Calc',
-  '💧 Water Tracker','🍽️ Meal Planner','📅 Calendar',
+const TICKER = [
+  'Voice STT + TTS pipeline',
+  'Emotion detection via HuggingFace',
+  'Multi-turn context — 8 turns',
+  'Hindi auto-detect + switch',
+  'Medication reminders + Firebase',
+  'GPS-based doctor finder',
+  'BMI + drug interaction checker',
+  'Google Calendar booking',
+  '7-day AI meal planner',
+  'Water intake tracker',
+]
+
+const PREVIEW_ROWS = [
+  { icon:'🎙️', label:'Voice',       val:'EN + हिं',           color:'#00e87a' },
+  { icon:'😰', label:'Emotion',      val:'neutral → stressed',  color:'#a78bfa' },
+  { icon:'🧠', label:'Memory',       val:'8-turn context',      color:'#60a5fa' },
+  { icon:'💊', label:'Reminders',    val:'Firebase sync',       color:'#00e87a' },
+  { icon:'🏥', label:'Doctor',       val:'GPS · OpenStreetMap', color:'#fbbf24' },
+  { icon:'📅', label:'Calendar',     val:'Google Calendar',     color:'#60a5fa' },
+  { icon:'💧', label:'Hydration',    val:'2.5L daily goal',     color:'#38bdf8' },
+  { icon:'🍽️', label:'Nutrition',   val:'7-day plan · macros', color:'#00e87a' },
 ]
 
 export default function HomePage({
@@ -26,144 +46,233 @@ export default function HomePage({
   onMicClick, onStop, onSend,
   onCloseSummary, speak, language, error,
 }) {
-  const chatEndRef  = useRef(null)
-  const [featureIdx, setFeatureIdx] = useState(0)
-  const hasMessages = messages.filter(m => m.role !== 'loading').length > 1
+  const chatEndRef   = useRef(null)
+  const [tick, setTick] = useState(0)
+  const hasMessages  = messages.filter(m => m.role !== 'loading').length > 1
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior:'smooth' })
   }, [messages, summary])
 
   useEffect(() => {
-    const t = setInterval(() => setFeatureIdx(i => (i + 1) % FEATURES.length), 2200)
+    const t = setInterval(() => setTick(i => (i + 1) % TICKER.length), 2400)
     return () => clearInterval(t)
   }, [])
 
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
-      {/* HERO — shown before first message */}
+      {/* ── HERO ─────────────────────────────────────────────── */}
       {!hasMessages && (
         <div style={{
-          flex:1, display:'flex', flexDirection:'column',
-          alignItems:'center', justifyContent:'center',
-          padding:'2rem 1.5rem', overflowY:'auto', position:'relative',
+          flex:1, overflowY:'auto',
+          display:'flex', flexDirection:'column',
+          position:'relative',
         }}>
-          {/* Grid bg */}
+          {/* Subtle dot grid */}
           <div style={{
-            position:'absolute', inset:0, pointerEvents:'none',
-            backgroundImage:'linear-gradient(rgba(0,232,122,0.025) 1px, transparent 1px),linear-gradient(90deg, rgba(0,232,122,0.025) 1px, transparent 1px)',
-            backgroundSize:'44px 44px',
+            position:'absolute', inset:0, pointerEvents:'none', zIndex:0,
+            backgroundImage:'radial-gradient(circle, rgba(0,232,122,0.08) 1px, transparent 1px)',
+            backgroundSize:'28px 28px',
           }}/>
 
-          {/* Two columns */}
+          {/* Main content */}
           <div style={{
-            display:'grid', gridTemplateColumns:'1fr 1fr',
-            gap:'3rem', maxWidth:940, width:'100%', alignItems:'center',
-            position:'relative', zIndex:1,
+            flex:1, display:'grid',
+            gridTemplateColumns:'1fr 420px',
+            gap:0, position:'relative', zIndex:1,
+            minHeight:0,
           }}>
 
-            {/* LEFT */}
-            <div>
+            {/* ── LEFT PANEL ───────────────────────────────── */}
+            <div style={{
+              padding:'2.5rem 2rem 1.5rem 2.5rem',
+              display:'flex', flexDirection:'column', justifyContent:'center',
+              borderRight:'1px solid #0f0f0f',
+            }}>
+
+              {/* Live badge */}
               <div style={{
-                display:'inline-flex', alignItems:'center', gap:7,
-                padding:'5px 12px', borderRadius:99,
-                background:'rgba(0,232,122,0.06)', border:'1px solid rgba(0,232,122,0.18)',
+                display:'inline-flex', alignItems:'center', gap:8,
+                padding:'5px 12px', borderRadius:99, width:'fit-content',
+                background:'rgba(0,232,122,0.06)', border:'1px solid rgba(0,232,122,0.2)',
                 fontSize:10, color:'#00e87a', fontFamily:'var(--font-mono)',
-                marginBottom:20, letterSpacing:'0.07em',
+                marginBottom:22, letterSpacing:'0.08em',
               }}>
-                <div style={{ width:6, height:6, borderRadius:'50%', background:'#00e87a', boxShadow:'0 0 6px #00e87a' }}/>
+                <div style={{ width:6, height:6, borderRadius:'50%', background:'#00e87a', boxShadow:'0 0 8px #00e87a' }}/>
                 AI VOICE AGENTS · HACKATHON 2026
               </div>
 
+              {/* Headline — fixed sizing */}
               <div style={{
                 fontFamily:'var(--font-display)', fontWeight:800,
-                fontSize:40, lineHeight:1.08, letterSpacing:'-1.5px',
-                color:'#fff', marginBottom:16,
+                lineHeight:1.1, letterSpacing:'-1px', marginBottom:18,
               }}>
-                Talk to Your<br/>
-                <span style={{ color:'#00e87a' }}>AI Doctor.</span><br/>
-                <span style={{ color:'#2a2a2a', fontWeight:400 }}>Anytime.</span>
+                <div style={{ fontSize:36, color:'#ffffff' }}>Talk to Your</div>
+                <div style={{
+                  fontSize:48, color:'#00e87a',
+                  textShadow:'0 0 40px rgba(0,232,122,0.3)',
+                }}>AI Doctor.</div>
+                <div style={{ fontSize:32, color:'#2a2a2a', fontWeight:500 }}>Anytime.</div>
               </div>
 
-              <p style={{ fontSize:13.5, color:'#3a3a3a', lineHeight:1.75, maxWidth:380, marginBottom:24, fontFamily:'var(--font-body)' }}>
+              {/* Subtitle */}
+              <p style={{
+                fontSize:13, color:'#3a3a3a', lineHeight:1.8,
+                maxWidth:360, marginBottom:20, fontFamily:'var(--font-body)',
+              }}>
                 Voice-first health companion. Detects emotion, checks symptoms,
-                finds doctors, manages medications — all through natural conversation
-                in <strong style={{ color:'#555' }}>English & Hindi</strong>.
+                finds doctors, manages medications — in{' '}
+                <span style={{ color:'#555', fontWeight:600 }}>English & Hindi</span>.
               </p>
 
+              {/* Ticker */}
               <div style={{
-                display:'inline-flex', alignItems:'center', gap:8,
-                padding:'6px 14px', borderRadius:99,
-                background:'#0d0d0d', border:'1px solid #1e1e1e',
-                fontSize:11.5, color:'#444', fontFamily:'var(--font-mono)',
-                marginBottom:26,
+                display:'flex', alignItems:'center', gap:10,
+                padding:'7px 13px', borderRadius:99, width:'fit-content',
+                background:'#0a0a0a', border:'1px solid #1e1e1e',
+                marginBottom:24, overflow:'hidden',
               }}>
-                <span style={{ fontSize:14 }}>{FEATURES[featureIdx].split(' ')[0]}</span>
-                <span>{FEATURES[featureIdx].split(' ').slice(1).join(' ')}</span>
-                <span style={{ color:'#1e1e1e', fontSize:10 }}>+14 more</span>
+                <div style={{ width:5, height:5, borderRadius:'50%', background:'#00e87a', flexShrink:0 }}/>
+                <span style={{ fontSize:11, color:'#444', fontFamily:'var(--font-mono)', whiteSpace:'nowrap' }}>
+                  {TICKER[tick]}
+                </span>
+                <span style={{ fontSize:10, color:'#1e1e1e', fontFamily:'var(--font-mono)', flexShrink:0 }}>
+                  +{TICKER.length - 1} more
+                </span>
               </div>
 
-              <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                {[{val:'15',label:'Features'},{val:'9',label:'Free APIs'},{val:'<1s',label:'Response'},{val:'0',label:'Code needed'}].map(s=>(
-                  <div key={s.label} style={{ padding:'10px 14px', borderRadius:10, background:'#080808', border:'1px solid #141414', textAlign:'center', minWidth:62 }}>
-                    <div style={{ fontFamily:'var(--font-display)', fontWeight:800, fontSize:20, color:'#00e87a', lineHeight:1 }}>{s.val}</div>
-                    <div style={{ fontSize:9, color:'#222', fontFamily:'var(--font-mono)', marginTop:3 }}>{s.label}</div>
+              {/* Stats row */}
+              <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:28 }}>
+                {[
+                  { val:'15', label:'Features',   color:'#00e87a' },
+                  { val:'9',  label:'Free APIs',   color:'#60a5fa' },
+                  { val:'<1s',label:'Response',    color:'#a78bfa' },
+                  { val:'5',  label:'API sources', color:'#fbbf24' },
+                ].map(s=>(
+                  <div key={s.label} style={{
+                    padding:'10px 16px', borderRadius:10,
+                    background:'#080808', border:'1px solid #161616',
+                    textAlign:'center', minWidth:72,
+                    transition:'border-color 0.14s',
+                  }}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor='#2a2a2a'}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor='#161616'}
+                  >
+                    <div style={{
+                      fontFamily:'var(--font-display)', fontWeight:800,
+                      fontSize:22, color:s.color, lineHeight:1,
+                    }}>{s.val}</div>
+                    <div style={{ fontSize:9, color:'#2a2a2a', fontFamily:'var(--font-mono)', marginTop:3 }}>
+                      {s.label}
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* RIGHT — Live preview card */}
-            <div style={{ background:'#080808', border:'1px solid #181818', borderRadius:16, padding:'18px', boxShadow:'0 0 50px rgba(0,232,122,0.05)' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:14, paddingBottom:12, borderBottom:'1px solid #0f0f0f' }}>
-                <span style={{ fontSize:9.5, color:'#222', fontFamily:'var(--font-mono)', textTransform:'uppercase', letterSpacing:'0.07em' }}>Live Session Preview</span>
-                <div style={{ display:'flex', gap:5, alignItems:'center' }}>
-                  <div style={{ width:5, height:5, borderRadius:'50%', background:'#00e87a', boxShadow:'0 0 5px #00e87a' }}/>
-                  <span style={{ fontSize:9.5, color:'#00e87a', fontFamily:'var(--font-mono)' }}>active</span>
+              {/* Quick action pills — ALL visible in a grid */}
+              <div>
+                <div style={{ fontSize:9, color:'#1e1e1e', fontFamily:'var(--font-mono)', marginBottom:8, letterSpacing:'0.08em', textTransform:'uppercase' }}>
+                  Quick start
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:5 }}>
+                  {SUGGESTIONS.map((s,i)=>(
+                    <button key={i} onClick={()=>setInputValue(s.text)} style={{
+                      display:'flex', alignItems:'center', gap:7,
+                      padding:'7px 10px', borderRadius:8,
+                      border:'1px solid #141414', background:'#080808',
+                      cursor:'pointer', fontSize:11.5, color:'#333',
+                      fontFamily:'var(--font-body)', transition:'all 0.14s',
+                      textAlign:'left', whiteSpace:'nowrap', overflow:'hidden',
+                    }}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(0,232,122,0.2)';e.currentTarget.style.color='#888'}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor='#141414';e.currentTarget.style.color='#333'}}
+                    >
+                      <span style={{ fontSize:13, flexShrink:0 }}>{s.icon}</span>
+                      <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{s.text}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
-              {[
-                { icon:'🎙️', label:'Voice recognized',  val:'English · Hindi',    color:'#00e87a' },
-                { icon:'😰', label:'Emotion detected',   val:'Neutral → Stressed', color:'#8b5cf6' },
-                { icon:'🧠', label:'Context retained',   val:'8 turns',            color:'#60a5fa' },
-                { icon:'💊', label:'Reminders active',   val:'Firebase synced',    color:'#00e87a' },
-                { icon:'🏥', label:'Doctor finder',      val:'GPS + OpenStreetMap',color:'#f59e0b' },
-                { icon:'📅', label:'Calendar booking',   val:'Google Calendar',    color:'#60a5fa' },
-              ].map((r,i)=>(
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 0', borderBottom:i<5?'1px solid #0a0a0a':'none' }}>
-                  <span style={{ fontSize:13, width:18, textAlign:'center', flexShrink:0 }}>{r.icon}</span>
-                  <span style={{ fontSize:11.5, color:'#2a2a2a', flex:1 }}>{r.label}</span>
-                  <span style={{ fontSize:10.5, color:r.color, fontFamily:'var(--font-mono)', fontWeight:600 }}>{r.val}</span>
-                </div>
-              ))}
-              <div style={{ marginTop:12, padding:'7px 10px', borderRadius:8, background:'#040404', border:'1px solid #0f0f0f', fontSize:9, color:'#161616', fontFamily:'var(--font-mono)', wordBreak:'break-all' }}>
-                SHA-256: a7f3c91e4b2d86e0f5a1c3d7e9b2f4a8c6e0d2b4f6a8c0e2d4f6a8c0e2d4f6a8
-              </div>
             </div>
-          </div>
 
-          {/* Quick actions */}
-          <div style={{ display:'flex', gap:6, flexWrap:'wrap', justifyContent:'center', marginTop:28, maxWidth:800, width:'100%', position:'relative', zIndex:1 }}>
-            {SUGGESTIONS.map((s,i)=>(
-              <button key={i} onClick={()=>setInputValue(s.text)} style={{
-                display:'flex', alignItems:'center', gap:6,
-                padding:'6px 12px', borderRadius:99,
-                border:'1px solid #171717', background:'#090909',
-                cursor:'pointer', fontSize:11, color:'#3a3a3a',
-                fontFamily:'var(--font-body)', transition:'all 0.14s', whiteSpace:'nowrap',
-              }}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(0,232,122,0.25)';e.currentTarget.style.color='#888'}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor='#171717';e.currentTarget.style.color='#3a3a3a'}}
+            {/* ── RIGHT PANEL — Live preview ────────────────── */}
+            <div style={{
+              padding:'2rem 1.5rem',
+              display:'flex', flexDirection:'column', gap:0,
+              background:'#040404',
+              borderLeft:'1px solid #0f0f0f',
+            }}>
+
+              {/* Panel header */}
+              <div style={{
+                display:'flex', alignItems:'center', justifyContent:'space-between',
+                marginBottom:16, paddingBottom:12,
+                borderBottom:'1px solid #0f0f0f',
+              }}>
+                <span style={{ fontSize:9, color:'#222', fontFamily:'var(--font-mono)', textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                  Live Session Preview
+                </span>
+                <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+                  <div style={{ width:5, height:5, borderRadius:'50%', background:'#00e87a', boxShadow:'0 0 6px #00e87a' }}/>
+                  <span style={{ fontSize:9, color:'#00e87a', fontFamily:'var(--font-mono)' }}>active</span>
+                </div>
+              </div>
+
+              {/* Feature rows */}
+              <div style={{ flex:1 }}>
+                {PREVIEW_ROWS.map((r,i)=>(
+                  <div key={i} style={{
+                    display:'grid', gridTemplateColumns:'22px 1fr auto',
+                    alignItems:'center', gap:10,
+                    padding:'9px 0',
+                    borderBottom: i < PREVIEW_ROWS.length-1 ? '1px solid #0a0a0a' : 'none',
+                  }}>
+                    <span style={{ fontSize:13, textAlign:'center' }}>{r.icon}</span>
+                    <span style={{ fontSize:11, color:'#282828', fontFamily:'var(--font-body)' }}>{r.label}</span>
+                    <span style={{ fontSize:10.5, color:r.color, fontFamily:'var(--font-mono)', fontWeight:600, textAlign:'right' }}>{r.val}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Tech hash */}
+              <div style={{
+                marginTop:14, padding:'10px 12px', borderRadius:8,
+                background:'#020202', border:'1px solid #0a0a0a',
+              }}>
+                <div style={{ fontSize:9, color:'#161616', fontFamily:'var(--font-mono)', marginBottom:4, letterSpacing:'0.06em' }}>
+                  STACK FINGERPRINT
+                </div>
+                <div style={{ fontSize:8.5, color:'#141414', fontFamily:'var(--font-mono)', wordBreak:'break-all', lineHeight:1.6 }}>
+                  react18·vite·groq·hf·firebase·osm·openfda·owm·gcal
+                </div>
+                <div style={{ fontSize:8, color:'#0f0f0f', fontFamily:'var(--font-mono)', marginTop:4 }}>
+                  sha: a7f3c91e·4b2d86e0·f5a1c3d7·e9b2f4a8
+                </div>
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={onMicClick}
+                style={{
+                  marginTop:14, padding:'12px',
+                  borderRadius:10, border:'1px solid rgba(0,232,122,0.2)',
+                  background:'rgba(0,232,122,0.06)',
+                  cursor:'pointer', fontSize:12, fontWeight:700,
+                  color:'#00e87a', fontFamily:'var(--font-display)',
+                  transition:'all 0.15s', textAlign:'center',
+                }}
+                onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,232,122,0.1)';e.currentTarget.style.borderColor='rgba(0,232,122,0.35)'}}
+                onMouseLeave={e=>{e.currentTarget.style.background='rgba(0,232,122,0.06)';e.currentTarget.style.borderColor='rgba(0,232,122,0.2)'}}
               >
-                <span style={{ fontSize:12 }}>{s.icon}</span>{s.text}
+                🎙️ Tap mic to start talking
               </button>
-            ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* CHAT — shown after first message */}
+      {/* ── CHAT ─────────────────────────────────────────────── */}
       {hasMessages && (
         <div style={{ flex:1, overflowY:'auto', padding:'1.25rem 1rem' }}>
           {turnCount > 0 && (
@@ -172,43 +281,88 @@ export default function HomePage({
             </div>
           )}
           {messages.map((msg,idx) =>
-            msg.role==='loading' ? <TypingIndicator key={idx}/> : <ChatBubble key={idx} message={msg}/>
+            msg.role==='loading'
+              ? <TypingIndicator key={idx}/>
+              : <ChatBubble key={idx} message={msg}/>
           )}
-          {loadingSummary && <div style={{ textAlign:'center', padding:'1rem', color:'#333', fontSize:13 }}>✨ Generating summary…</div>}
-          {summary && <SessionSummary summary={summary} onClose={onCloseSummary} onSpeak={text=>speak(text,language)}/>}
+          {loadingSummary && (
+            <div style={{ textAlign:'center', padding:'1rem', color:'#333', fontSize:13 }}>
+              ✨ Generating summary…
+            </div>
+          )}
+          {summary && (
+            <SessionSummary
+              summary={summary}
+              onClose={onCloseSummary}
+              onSpeak={text=>speak(text,language)}
+            />
+          )}
           {interimText && (
             <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:8 }}>
-              <div style={{ padding:'8px 14px', fontSize:12.5, fontStyle:'italic', borderRadius:'16px 16px 4px 16px', background:'rgba(0,232,122,0.05)', border:'1px dashed rgba(0,232,122,0.15)', color:'#2a4a38', maxWidth:'72%' }}>
-                {interimText}…
-              </div>
+              <div style={{
+                padding:'8px 14px', fontSize:12.5, fontStyle:'italic',
+                borderRadius:'16px 16px 4px 16px',
+                background:'rgba(0,232,122,0.05)', border:'1px dashed rgba(0,232,122,0.15)',
+                color:'#2a4a38', maxWidth:'72%',
+              }}>{interimText}…</div>
             </div>
           )}
           <div ref={chatEndRef}/>
         </div>
       )}
 
-      {/* INPUT ZONE */}
-      <div style={{ borderTop:`1px solid ${hasMessages?'#0f0f0f':'transparent'}`, background:hasMessages?'#040404':'transparent', padding:'0.875rem 1.25rem 1rem', flexShrink:0, transition:'all 0.3s' }}>
+      {/* ── INPUT ZONE ───────────────────────────────────────── */}
+      <div style={{
+        borderTop:'1px solid #0d0d0d',
+        background:'#030303',
+        padding:'0.875rem 1.5rem 1rem',
+        flexShrink:0,
+      }}>
         {hasMessages && <Waveform isActive={isSpeaking}/>}
-        <div style={{ display:'flex', alignItems:'center', gap:14, marginTop:hasMessages?10:0 }}>
-          <MicButton isListening={isListening} isSpeaking={isSpeaking} onClick={onMicClick} onStop={onStop} error={error}/>
+        <div style={{ display:'flex', alignItems:'center', gap:14, marginTop: hasMessages ? 10 : 0 }}>
+          <MicButton
+            isListening={isListening} isSpeaking={isSpeaking}
+            onClick={onMicClick} onStop={onStop} error={error}
+          />
           <div style={{ flex:1 }}>
             <form onSubmit={onSend} style={{ display:'flex', gap:8 }}>
-              <input type="text" value={inputValue} onChange={e=>setInputValue(e.target.value)}
+              <input
+                type="text" value={inputValue}
+                onChange={e=>setInputValue(e.target.value)}
                 disabled={isListening||isSpeaking||isLoading}
-                placeholder={hasMessages?'Continue the conversation…':'Or type here to start…'}
-                style={{ flex:1, padding:'10px 16px', borderRadius:99, border:'1px solid #1a1a1a', background:'#0d0d0d', color:'var(--text-1)', fontSize:13, fontFamily:'var(--font-body)', outline:'none', transition:'border-color 0.14s' }}
-                onFocus={e=>e.target.style.borderColor='rgba(0,232,122,0.3)'}
+                placeholder={hasMessages?'Continue the conversation…':'Or type here to start talking…'}
+                style={{
+                  flex:1, padding:'11px 18px', borderRadius:99,
+                  border:'1px solid #1a1a1a', background:'#0d0d0d',
+                  color:'var(--text-1)', fontSize:13,
+                  fontFamily:'var(--font-body)', outline:'none',
+                  transition:'border-color 0.15s',
+                }}
+                onFocus={e=>e.target.style.borderColor='rgba(0,232,122,0.35)'}
                 onBlur={e=>e.target.style.borderColor='#1a1a1a'}
               />
-              <button type="submit" disabled={isListening||isSpeaking||isLoading||!inputValue.trim()}
-                style={{ padding:'10px 22px', borderRadius:99, border:'none', background:'linear-gradient(135deg,#00e87a,#00c264)', color:'#000', fontSize:13, fontWeight:700, cursor:'pointer', fontFamily:'var(--font-display)', flexShrink:0, opacity:(!inputValue.trim()||isLoading)?0.35:1, transition:'opacity 0.14s' }}>
-                Send
-              </button>
+              <button
+                type="submit"
+                disabled={isListening||isSpeaking||isLoading||!inputValue.trim()}
+                style={{
+                  padding:'11px 24px', borderRadius:99, border:'none',
+                  background:'linear-gradient(135deg,#00e87a,#00c264)',
+                  color:'#000', fontSize:13, fontWeight:700,
+                  cursor:'pointer', fontFamily:'var(--font-display)', flexShrink:0,
+                  opacity:(!inputValue.trim()||isLoading)?0.3:1,
+                  transition:'opacity 0.14s',
+                }}
+              >Send</button>
             </form>
             <div style={{ display:'flex', justifyContent:'space-between', marginTop:5, padding:'0 4px' }}>
-              <span style={{ fontSize:9, color:'#181818', fontFamily:'var(--font-mono)' }}>Chrome · No audio stored · Privacy first</span>
-              {isLoading && <span style={{ fontSize:9, color:'#00e87a', fontFamily:'var(--font-mono)' }}>thinking…</span>}
+              <span style={{ fontSize:9, color:'#181818', fontFamily:'var(--font-mono)' }}>
+                Chrome only · No audio stored · Voice is processed locally
+              </span>
+              {isLoading && (
+                <span style={{ fontSize:9, color:'#00e87a', fontFamily:'var(--font-mono)' }}>
+                  thinking…
+                </span>
+              )}
             </div>
           </div>
         </div>
