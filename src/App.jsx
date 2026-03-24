@@ -380,7 +380,7 @@ export default function App() {
             isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}
             interimText={interimText} turnCount={turnCount}
             summary={summary} loadingSummary={loadingSummary}
-            showBreathing={showBreathing} emotion={emotion}
+            showBreathing={showBreathing} setShowBreathing={setShowBreathing} emotion={emotion}
             inputValue={inputValue} setInputValue={setInputValue}
             onMicClick={() => isListening ? stopListening() : startListening()}
             onStop={stop}

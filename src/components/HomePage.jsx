@@ -3,6 +3,7 @@ import ChatBubble      from './ChatBubble.jsx'
 import { Waveform, TypingIndicator, ContextPill } from './VoiceComponents.jsx'
 import MicButton       from './MicButton.jsx'
 import SessionSummary  from './SessionSummary.jsx'
+import BreathingExercise from './BreathingExercise.jsx'
 
 /* ─── constants ─────────────────────────────────────────────── */
 const CHIPS = [
@@ -68,6 +69,8 @@ export default function HomePage({
   inputValue, setInputValue,
   onMicClick, onStop, onSend,
   onCloseSummary, speak, language, error,
+  showBreathing, onNavigate, onQuery,
+  setShowBreathing,
 }) {
   const chatEndRef = useRef(null)
   const inputRef   = useRef(null)
@@ -101,6 +104,14 @@ export default function HomePage({
         )}
         <div ref={chatEndRef}/>
       </div>
+      {showBreathing && (
+        <div style={{ padding:'0 1rem 0.5rem' }}>
+          <BreathingExercise
+            onClose={() => setShowBreathing && setShowBreathing(false)}
+            onSpeak={text => speak(text, language)}
+          />
+        </div>
+      )}
       <InputBar ref={inputRef} inputValue={inputValue} setInputValue={setInputValue}
         isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}
         onMicClick={onMicClick} onStop={onStop} onSend={onSend} error={error} showWave/>

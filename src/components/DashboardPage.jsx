@@ -1,6 +1,7 @@
 import React from 'react'
 import { PageShell, PageHero, SectionLabel, StatCard } from './PageShell.jsx'
 import MoodTimeline from './MoodTimeline.jsx'
+import SessionStats from './SessionStats.jsx'
 
 const FEATURES = [
   { icon:'🎙️', name:'Voice Pipeline',      desc:'STT → LLM → TTS',          color:'#00e87a' },
@@ -52,12 +53,12 @@ export default function DashboardPage({ turnCount, avgLatency, apiCallCount, emo
         ].map(s=>(
           <div key={s.label} style={{
             padding:'12px', borderRadius:12, textAlign:'center',
-            background:'#0d0d0d', border:'1px solid #1a1a1a',
+            background:'var(--surface)', border:'1px solid #1a1a1a',
           }}>
             <div style={{ fontFamily:'var(--font-display)', fontWeight:800, fontSize:24, color:s.color, lineHeight:1, marginBottom:4 }}>
               {s.value}
             </div>
-            <div style={{ fontSize:10, color:'#2a2a2a', fontFamily:'var(--font-mono)' }}>{s.label}</div>
+            <div style={{ fontSize:10, color:'var(--text-3)', fontFamily:'var(--font-mono)' }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -66,7 +67,7 @@ export default function DashboardPage({ turnCount, avgLatency, apiCallCount, emo
       {moodHistory.length > 0 && (
         <div>
           <SectionLabel>Mood timeline this session</SectionLabel>
-          <div style={{ background:'#0d0d0d', border:'1px solid #1a1a1a', borderRadius:12, padding:'14px', marginTop:10 }}>
+          <div style={{ background:'var(--surface)', border:'1px solid #1a1a1a', borderRadius:12, padding:'14px', marginTop:10 }}>
             <MoodTimeline history={moodHistory} />
           </div>
         </div>
@@ -79,7 +80,7 @@ export default function DashboardPage({ turnCount, avgLatency, apiCallCount, emo
           {FEATURES.map((f,i)=>(
             <div key={i} style={{
               padding:'10px 12px', borderRadius:10,
-              background:'#0a0a0a', border:'1px solid #141414',
+              background:'var(--surface)', border:'1px solid var(--border)',
               display:'flex', alignItems:'center', gap:9,
             }}>
               <span style={{ fontSize:16, flexShrink:0 }}>{f.icon}</span>
@@ -87,7 +88,7 @@ export default function DashboardPage({ turnCount, avgLatency, apiCallCount, emo
                 <div style={{ fontSize:11.5, fontWeight:600, color:f.color, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                   {f.name}
                 </div>
-                <div style={{ fontSize:9.5, color:'#2a2a2a', fontFamily:'var(--font-mono)', marginTop:1 }}>
+                <div style={{ fontSize:9.5, color:'var(--text-3)', fontFamily:'var(--font-mono)', marginTop:1 }}>
                   {f.desc}
                 </div>
               </div>
@@ -103,7 +104,7 @@ export default function DashboardPage({ turnCount, avgLatency, apiCallCount, emo
           {STACK.map(t=>(
             <span key={t} style={{
               fontSize:10.5, padding:'4px 9px', borderRadius:99,
-              background:'rgba(0,232,122,0.05)', color:'#2a5a40',
+              background:'rgba(0,232,122,0.05)', color:'var(--text-2)',
               border:'1px solid rgba(0,232,122,0.1)', fontFamily:'var(--font-mono)',
             }}>{t}</span>
           ))}
@@ -113,13 +114,13 @@ export default function DashboardPage({ turnCount, avgLatency, apiCallCount, emo
       {/* Built by */}
       <div style={{
         padding:'14px 16px', borderRadius:12,
-        background:'#080808', border:'1px solid #111',
+        background:'var(--bg)', border:'1px solid var(--border)',
         textAlign:'center',
       }}>
-        <div style={{ fontSize:11, color:'#1e1e1e', fontFamily:'var(--font-mono)', marginBottom:4 }}>
+        <div style={{ fontSize:11, color:'var(--text-3)', fontFamily:'var(--font-mono)', marginBottom:4 }}>
           HACKATHON 2026 · AI VOICE AGENTS TRACK
         </div>
-        <div style={{ fontSize:13, fontWeight:700, color:'#2a2a2a', fontFamily:'var(--font-display)' }}>
+        <div style={{ fontSize:13, fontWeight:700, color:'var(--text-3)', fontFamily:'var(--font-display)' }}>
           Built with ♥ by Shubham
         </div>
       </div>
