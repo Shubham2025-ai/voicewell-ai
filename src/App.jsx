@@ -260,15 +260,37 @@ export default function App() {
     // Doctor finder
     if (isDoctorQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
+
+      // Try to extract a city name from the query (e.g. "hospitals in Pune")
+      const cityMatch = transcript.match(/(?:in|near|at|around)\s+([A-Za-z\s]{3,25})(?:\s|$)/i)
+      const mentionedCity = cityMatch ? cityMatch[1].trim() : null
+
       try {
         const data = await findNearbyDoctors(transcript)
         const text = buildDoctorText(data)
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
       } catch (err) {
-        const errMsg = err.message==='denied'
-          ? "Location access was blocked. Click the lock icon in Chrome → Site settings → Location → Allow, then try again."
-          : "I couldn't access your location. Please enable location and try again."
+        let errMsg
+        if (err.message === 'denied') {
+          errMsg = "📍 Location access is blocked. To fix: tap the lock icon in your browser's address bar → Site settings → Location → Allow. Then try again."
+        } else if (err.message === 'not-supported') {
+          errMsg = "Your browser doesn't support location access. Try opening VoiceWell in Chrome for the best experience."
+        } else if (err.message === 'timeout' || err.message === 'unavailable') {
+          // Try falling back to mentioned city or Mumbai (default)
+          const fallbackCity = mentionedCity || 'Mumbai'
+          try {
+            const data = await findNearbyDoctors(transcript, fallbackCity)
+            const text = `⚠️ Couldn't get your GPS location, so showing results near ${fallbackCity} instead. ${buildDoctorText(data)}`
+            setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
+            speakRef.current?.(text, lang)
+            return
+          } catch {
+            errMsg = `📡 Location signal is weak and I couldn't find "${fallbackCity}" either. Please check your internet connection and try again, or say "hospitals in Mumbai" to search by city name.`
+          }
+        } else {
+          errMsg = "Something went wrong while searching for nearby facilities. Please try again in a moment."
+        }
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:errMsg, time:getTimeString() }])
         speakRef.current?.(errMsg, lang)
       }

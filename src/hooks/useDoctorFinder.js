@@ -84,25 +84,45 @@ export function useDoctorFinder() {
     return DOCTOR_KEYWORDS.some(k => t.includes(k))
   }, [])
 
-  const findNearbyDoctors = useCallback(async (transcript) => {
-    // Step 1: Get user location
-    const position = await new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('not-supported'))
-        return
-      }
-      navigator.geolocation.getCurrentPosition(resolve, (err) => {
-        if (err.code === 1) reject(new Error('denied'))
-        else if (err.code === 2) reject(new Error('unavailable'))
-        else reject(new Error('timeout'))
-      }, {
-        timeout: 15000,
-        maximumAge: 300000,
-        enableHighAccuracy: false,
-      })
-    })
+  const findNearbyDoctors = useCallback(async (transcript, manualCity = null) => {
+    let lat, lon
 
-    const { latitude: lat, longitude: lon } = position.coords
+    if (manualCity) {
+      // Manual city fallback: geocode the city name
+      const geoRes = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(manualCity)}&format=json&limit=1`,
+        { headers: { 'Accept-Language': 'en' } }
+      )
+      const geoData = await geoRes.json()
+      if (!geoData.length) throw new Error('city-not-found')
+      lat = parseFloat(geoData[0].lat)
+      lon = parseFloat(geoData[0].lon)
+    } else {
+      // Step 1: Get user location — try high accuracy first, fall back to low
+      const tryGeolocate = (enableHighAccuracy, timeout) =>
+        new Promise((resolve, reject) => {
+          if (!navigator.geolocation) { reject(new Error('not-supported')); return }
+          navigator.geolocation.getCurrentPosition(resolve, (err) => {
+            if (err.code === 1) reject(new Error('denied'))
+            else if (err.code === 2) reject(new Error('unavailable'))
+            else reject(new Error('timeout'))
+          }, { timeout, maximumAge: 300000, enableHighAccuracy })
+        })
+
+      let position
+      try {
+        // First try: low accuracy (faster, works on more devices)
+        position = await tryGeolocate(false, 10000)
+      } catch (e) {
+        if (e.message === 'denied') throw e   // permission denied — no point retrying
+        // Second try: high accuracy with more time
+        position = await tryGeolocate(true, 20000)
+      }
+
+      lat = position.coords.latitude
+      lon = position.coords.longitude
+    }
+
     const specialty = detectSpecialty(transcript)
 
     // Step 2: Reverse geocode to get city name
