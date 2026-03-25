@@ -4,8 +4,8 @@ import EmotionBadge from './EmotionBadge.jsx'
 export const PAGES = [
   { id:'home',         icon:'🎙️', label:'Voice'     },
   { id:'health',       icon:'🩺',  label:'Health'    },
-  { id:'nutrition',    icon:'🍽️', label:'Nutrition'  },
-  { id:'medications',  icon:'💊',  label:'Meds'      },
+  { id:'nutrition',    icon:'🍽️', label:'Nutrition' },
+  // { id:'medications',  icon:'💊',  label:'Meds'   },  // removed
   { id:'appointments', icon:'📅',  label:'Appts'     },
   { id:'dashboard',    icon:'📊',  label:'Stats'     },
 ]
@@ -33,7 +33,7 @@ export default function Header({
         boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)',
       }}>
 
-        {/* ── Logo ── */}
+        {/* Logo */}
         <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0, minWidth:150 }}>
           <div style={{
             width:32, height:32, borderRadius:9, flexShrink:0,
@@ -60,7 +60,7 @@ export default function Header({
           </div>
         </div>
 
-        {/* ── Center nav ── */}
+        {/* Center nav */}
         <nav style={{
           position:'absolute', left:'50%', transform:'translateX(-50%)',
           display:'flex', alignItems:'center', gap:1,
@@ -89,25 +89,12 @@ export default function Header({
               >
                 <span style={{ fontSize:13 }}>{p.icon}</span>
                 <span>{p.label}</span>
-                {p.id==='medications' && reminderCount > 0 && (
-                  <span style={{
-                    position:'absolute', top:-5, right:-4,
-                    minWidth:15, height:15, borderRadius:99,
-                    padding:'0 3px',
-                    background:'#ff3d5a', color:'#fff',
-                    fontSize:8, fontWeight:800,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                    border:'2px solid rgba(4,4,4,0.97)',
-                    boxShadow:'0 0 6px rgba(255,61,90,0.5)',
-                    fontFamily:'var(--font-mono)',
-                  }}>{reminderCount > 9 ? '9+' : reminderCount}</span>
-                )}
               </button>
             )
           })}
         </nav>
 
-        {/* ── Right controls ── */}
+        {/* Right controls */}
         <div style={{ display:'flex', alignItems:'center', gap:4, marginLeft:'auto', flexShrink:0 }}>
 
           {emotion && (
@@ -116,18 +103,13 @@ export default function Header({
             </div>
           )}
 
-          {/* Divider */}
           <div style={{ width:1, height:16, background:'rgba(255,255,255,0.07)', margin:'0 2px' }} />
 
-          {/* Summary */}
           <HBtn onClick={onSummary}   icon="📋" tip="Session summary" />
-          {/* Clear */}
           <HBtn onClick={onClearChat} icon="🗑️" tip="Clear chat" />
 
-          {/* Divider */}
           <div style={{ width:1, height:16, background:'rgba(255,255,255,0.07)', margin:'0 2px' }} />
 
-          {/* Language toggle */}
           <button onClick={onLanguageToggle} style={{
             display:'flex', alignItems:'center', gap:5,
             padding:'5px 10px', borderRadius:8,
@@ -144,10 +126,8 @@ export default function Header({
             <span>{language==='en-US'?'EN':'हिं'}</span>
           </button>
 
-          {/* Dark mode */}
-          <HBtn onClick={onDarkToggle} icon={darkMode ? '☀️' : '🌙'} tip={darkMode ? 'Light mode' : 'Dark mode'} />
+          <HBtn onClick={onDarkToggle} icon={darkMode ? '☀️' : '��'} tip={darkMode ? 'Light mode' : 'Dark mode'} />
 
-          {/* Mobile hamburger */}
           <button
             onClick={() => setMobileOpen(o => !o)}
             style={{
@@ -164,7 +144,7 @@ export default function Header({
         </div>
       </header>
 
-      {/* ── Mobile nav dropdown ── */}
+      {/* Mobile nav dropdown */}
       {mobileOpen && (
         <div style={{
           background:'rgba(6,6,6,0.98)',
@@ -231,3 +211,4 @@ function HBtn({ onClick, tip, icon }) {
     >{icon}</button>
   )
 }
+
