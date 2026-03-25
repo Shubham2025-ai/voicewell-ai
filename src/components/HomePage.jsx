@@ -1,520 +1,497 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import ChatBubble from './ChatBubble.jsx'
+import { Waveform, TypingIndicator, ContextPill } from './VoiceComponents.jsx'
+import MicButton from './MicButton.jsx'
+import SessionSummary from './SessionSummary.jsx'
+import BreathingExercise from './BreathingExercise.jsx'
 
-// Layout
-import Header          from './components/Header.jsx'
-import HomePage        from './components/HomePage.jsx'
-import ChromeWarning   from './components/ChromeWarning.jsx'
+const CHIPS = [
+  { icon:'🤒', label:'Headache',      full:'I have a headache since morning' },
+  { icon:'😰', label:'Stress',        full:"I'm feeling very stressed and anxious" },
+  { icon:'📊', label:'BMI',           full:'My weight is 70kg and height is 5 feet 8 inches' },
+  { icon:'💊', label:'Drug check',    full:'Can I take ibuprofen with aspirin?' },
+  { icon:'🏥', label:'Find doctor',   full:'Find a doctor near me' },
+  { icon:'💧', label:'Log water',     full:'I drank a glass of water' },
+  { icon:'🍽️', label:'Meal plan',    full:'Plan my vegetarian meals for the week' },
+  { icon:'📅', label:'Appointment',   full:'Book a checkup for tomorrow at 10 AM' },
+]
 
-// Feature pages
-import HealthPage      from './components/HealthPage.jsx'
-import NutritionPage   from './components/NutritionPage.jsx'
-import MedicationsPage from './components/MedicationsPage.jsx'
-import AppointmentsPage from './components/AppointmentsPage.jsx'
-import DashboardPage   from './components/DashboardPage.jsx'
+const TICKER = [
+  'Voice STT + TTS pipeline',
+  'Emotion detection via HuggingFace',
+  'Multi-turn 8-turn context',
+  'Hindi auto-detect + switch',
+  'GPS-based doctor finder',
+  'Drug interaction via OpenFDA',
+  'Google Calendar booking',
+]
 
-// Hooks
-import { useSpeech }        from './hooks/useSpeech.js'
-import { useGroq }          from './hooks/useGroq.js'
-import { useTTS }           from './hooks/useTTS.js'
-import { useEmotion, EMOTION_META } from './hooks/useEmotion.js'
-import { useReminders }     from './hooks/useReminders.js'
-import { useNutrition }     from './hooks/useNutrition.js'
-import { useWeather }       from './hooks/useWeather.js'
-import { useDrugInteraction } from './hooks/useDrugInteraction.js'
-import { useBMI }           from './hooks/useBMI.js'
-import { useDoctorFinder }  from './hooks/useDoctorFinder.js'
-import { useAppointment }   from './hooks/useAppointment.js'
-import { useWaterIntake }   from './hooks/useWaterIntake.js'
-import { useMealPlanner }   from './hooks/useMealPlanner.js'
-import { getTimeString, containsHindi } from './utils/helpers.js'
-
-const WELCOME = {
-  role:    'assistant',
-  content: "Hi! I'm VoiceWell — your AI health companion. Tap the mic and tell me how you're feeling. I can help with symptoms, stress, medications, nutrition, and more.",
-  time:    getTimeString(),
-}
-
-// Simple keyword-based intent scoring
-const intentKeywords = {
-  doctor: ['doctor','dentist','clinic','hospital','nearby','near me','appointment with doctor','find doctor','physician'],
-  drug: ['drug','interaction','medicine','pill','tablet','ibuprofen','paracetamol','aspirin'],
-  bmi: ['bmi','body mass index','height','weight'],
-  meal: ['meal plan','diet','food plan','calories','breakfast','lunch','dinner'],
-  water: ['water','hydration','drink'],
-  appointment: ['appointment','book','schedule visit','checkup'],
-  reminder: ['remind','reminder','take at'],
-  weather: ['weather','temperature','forecast'],
-}
-function detectIntentScore(text) {
-  const t = text.toLowerCase()
-  let best = { intent: null, score: 0 }
-  Object.entries(intentKeywords).forEach(([intent, words]) => {
-    const hits = words.reduce((c, w) => c + (t.includes(w) ? 1 : 0), 0)
-    if (hits > best.score) best = { intent, score: hits }
-  })
-  const confidence = Math.min(1, best.score / 2) // 0, 0.5, 1 scale
-  return { ...best, confidence }
-}
-
-const isSettingReminder = t => {
-  const l = t.toLowerCase()
-  const hasIntent = /re?mi[nm]d/.test(l) || l.includes('set a reminder') || l.includes('add reminder') || l.includes('schedule')
-  const hasTake = l.includes('take') || l.includes('tablet') || l.includes('medicine') || l.includes('pill') ||
-                  l.includes('drug') || l.includes('vitamin') || l.includes('capsule') || l.includes('dose') ||
-                  l.includes('aspirin') || l.includes('paracetamol') || l.includes('ibuprofen') || l.includes('insulin')
-  const hasTime = /\d/.test(l) || ['morning','afternoon','evening','night','noon','am','pm','daily','everyday','tonight','today'].some(w => l.includes(w))
-  return hasIntent && (hasTake || hasTime)
-}
-const isAskingReminders = t => {
-  const l = t.toLowerCase()
-  if (isSettingReminder(t)) return false
-  return ['medication','reminder','medicine','tablet','pill','schedule'].some(w => l.includes(w)) &&
-         ['what','list','show','have','my','all'].some(w => l.includes(w))
-}
-const isAskingSummary = t => {
-  const l = t.toLowerCase()
-  return ['summary','summarize','recap','what did we','session','review'].some(w => l.includes(w))
-}
-
-async function generateSummary(history, apiKey) {
-  if (!apiKey || history.length < 2) return null
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', max_tokens: 300, temperature: 0.3,
-        messages: [
-          { role:'system', content:'Summarize this health conversation. Return ONLY valid JSON:\n{"overview":"2-sentence summary","topics":["t1","t2"],"tips":["tip1","tip2","tip3"]}' },
-          { role:'user',   content:`Conversation:\n${history.filter(m=>m.role!=='loading').map(m=>`${m.role==='user'?'User':'VoiceWell'}: ${m.content}`).join('\n')}` }
-        ]
-      })
-    })
-    const data = await res.json()
-    return JSON.parse(data.choices?.[0]?.message?.content?.trim())
-  } catch { return null }
-}
-
-export default function App() {
-  const [messages,       setMessages]       = useState([WELCOME])
-  const [language,       setLanguage]       = useState('en-US')
-  const [darkMode,       setDarkMode]       = useState(true)
-  const [activePage,     setActivePage]     = useState('home')
-  const [summary,        setSummary]        = useState(null)
-  const [loadingSummary, setLoadingSummary] = useState(false)
-  const [isConnected,    setIsConnected]    = useState(true)
-  const [inputValue,     setInputValue]     = useState('')
-  const [moodHistory,    setMoodHistory]    = useState([])
-  const [latencies,      setLatencies]      = useState([])
-  const [apiCallCount,   setApiCallCount]   = useState(0)
-  const [showBreathing,  setShowBreathing]  = useState(false)
-  const [contextState,   setContextState]   = useState({ location:null, doctor:null, diet:null, med:null, lastIntent:null })
-
+export default function HomePage({
+  messages, isListening, isSpeaking, isLoading,
+  interimText, turnCount, summary, loadingSummary,
+  inputValue, setInputValue,
+  onMicClick, onStop, onSend,
+  onCloseSummary, speak, language, error,
+  showBreathing, onNavigate, onQuery,
+  setShowBreathing,
+  contextState,
+  onResetContext,
+}) {
   const chatEndRef = useRef(null)
-  const startTime  = useRef(null)
+  const inputRef   = useRef(null)
+  const [tick, setTick] = useState(0)
+  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
+  const hasMessages = messages.filter(m => m.role !== 'loading').length > 1
 
-  const messagesRef       = useRef(messages)
-  const languageRef       = useRef(language)
-  const remindersRef      = useRef([])
-  const sendMessageRef    = useRef(null)
-  const detectEmotionRef  = useRef(null)
-  const addReminderRef    = useRef(null)
-  const parseReminderRef  = useRef(null)
-  const speakRef          = useRef(null)
-  const getNutritionRef   = useRef(null)
-  const buildNutrRef      = useRef(null)
-  const getWeatherRef     = useRef(null)
-  const buildWeatherRef   = useRef(null)
-
-  useEffect(() => { messagesRef.current = messages }, [messages])
-  useEffect(() => { languageRef.current = language }, [language])
-
-  const { speak, stop, isSpeaking }   = useTTS()
-  const { emotion, loading: emoLoad, detectEmotion } = useEmotion()
-  const { reminders, isMockMode, notifGranted, addReminder, removeReminder, parseReminderText } = useReminders()
-  const { isNutritionQuery, getNutrition, buildNutritionText } = useNutrition()
-  const { isWeatherQuery, getWeather, buildWeatherText } = useWeather()
-  const { isDrugQuery, checkInteraction, buildInteractionText } = useDrugInteraction()
-  const { isBMIQuery, calculateBMI, buildBMIText } = useBMI()
-  const { isDoctorQuery, findNearbyDoctors, buildDoctorText } = useDoctorFinder()
-  const { isAppointmentQuery, bookAppointment, buildAppointmentText } = useAppointment()
-  const { isWaterQuery, isLoggingWater, logWater, getStatus, buildWaterText, total: waterTotal, pct: waterPct, log: waterLog, goalMl } = useWaterIntake()
-  const { isMealPlanQuery, generateMealPlan, buildMealText } = useMealPlanner()
-
-  useEffect(() => { remindersRef.current   = reminders     }, [reminders])
-  useEffect(() => { speakRef.current       = speak         }, [speak])
-  useEffect(() => { detectEmotionRef.current = detectEmotion }, [detectEmotion])
-  useEffect(() => { addReminderRef.current = addReminder   }, [addReminder])
-  useEffect(() => { parseReminderRef.current = parseReminderText }, [parseReminderText])
-  useEffect(() => { getNutritionRef.current  = getNutrition   }, [getNutrition])
-  useEffect(() => { buildNutrRef.current     = buildNutritionText }, [buildNutritionText])
-  useEffect(() => { getWeatherRef.current    = getWeather     }, [getWeather])
-  useEffect(() => { buildWeatherRef.current  = buildWeatherText  }, [buildWeatherText])
-
-  useEffect(() => { document.documentElement.classList.toggle('light', !darkMode) }, [darkMode])
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:'smooth' }) }, [messages, summary])
-
-  const handleGroqResponse = useCallback((agentText) => {
-    const latency = startTime.current ? Math.round(performance.now() - startTime.current) : null
-    setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:agentText, time:getTimeString(), latency }])
-    setIsConnected(true)
-    if (latency) setLatencies(prev => [...prev.slice(-9), latency])
-    setApiCallCount(prev => prev + 1)
-    speakRef.current?.(agentText, containsHindi(agentText) ? 'hi-IN' : languageRef.current)
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const handler = e => setWide(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
   }, [])
 
-  const { sendMessage, isLoading } = useGroq({ onResponse: handleGroqResponse })
-  useEffect(() => { sendMessageRef.current = sendMessage }, [sendMessage])
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:'smooth' }) }, [messages, summary])
+  useEffect(() => {
+    const t = setInterval(() => setTick(i => (i+1) % TICKER.length), 2800)
+    return () => clearInterval(t)
+  }, [])
 
-  const handleFinalTranscriptRef = useRef(null)
-  const onQuery = useCallback((t) => { handleFinalTranscriptRef.current?.(t) }, [])
+  const contextText = (() => {
+    const parts = []
+    if (contextState?.lastIntent) parts.push(`last=${contextState.lastIntent}`)
+    if (contextState?.location)   parts.push(`loc=${contextState.location}`)
+    if (contextState?.doctor)     parts.push(`doc=${contextState.doctor}`)
+    if (contextState?.diet)       parts.push(`diet=${contextState.diet}`)
+    if (contextState?.med)        parts.push(`med=${contextState.med}`)
+    return parts.join(' · ')
+  })()
 
-  const processingRef = useRef(new Set())
+  /* CHAT mode */
+  if (hasMessages) return (
+    <div style={{
+      flex:1, display:'flex',
+      flexDirection: wide ? 'row' : 'column',
+      gap: wide ? 16 : 0,
+      overflow:'hidden'
+    }}>
+      <div style={{
+        flex: wide ? 2 : 1, minWidth:0,
+        display:'flex', flexDirection:'column',
+        borderRight: wide ? '1px solid rgba(255,255,255,0.06)' : 'none'
+      }}>
+        <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 1.25rem' }}>
+          {turnCount > 0 && (
+            <div style={{ display:'flex', justifyContent:'center', marginBottom:10, gap:8, flexWrap:'wrap' }}>
+              <ContextPill turnCount={turnCount} />
+              {contextText && <ContextStatePill text={contextText} />}
+            </div>
+          )}
+          {messages.map((m,i) =>
+            m.role==='loading'
+              ? <TypingIndicator key={i}/>
+              : <ChatBubble
+                  key={i}
+                  message={m}
+                  onSpeak={(text) => speak(text, language)}
+                />
+          )}
+          {loadingSummary && (
+            <div style={{ textAlign:'center', padding:'1.5rem', color:'rgba(255,255,255,0.4)', fontSize:13 }}>
+              ✨ Generating summary…
+            </div>
+          )}
+          {summary && <SessionSummary summary={summary} onClose={onCloseSummary} onSpeak={t=>speak(t,language)}/>}
+          {interimText && (
+            <div style={{ display:'flex', justifyContent:'flex-end', marginBottom:10 }}>
+              <div style={{
+                padding:'9px 15px', fontSize:13, fontStyle:'italic',
+                borderRadius:'16px 16px 4px 16px',
+                background:'rgba(0,232,122,0.07)',
+                border:'1px dashed rgba(0,232,122,0.2)',
+                color:'#6dcc96', maxWidth:'72%'
+              }}>
+                {interimText}…
+              </div>
+            </div>
+          )}
+          <div ref={chatEndRef}/>
+        </div>
 
-  const resetContext = () => setContextState({ location:null, doctor:null, diet:null, med:null, lastIntent:null })
-
-  const handleFinalTranscript = useCallback(async (transcript) => {
-    if (!transcript?.trim()) return
-    if (processingRef.current.has(transcript)) return
-    processingRef.current.add(transcript)
-    const clearPending = () => processingRef.current.delete(transcript)
-
-    const lang = languageRef.current
-    if (containsHindi(transcript)) setLanguage('hi-IN')
-    startTime.current = performance.now()
-    const userMsg = { role:'user', content:transcript, time:getTimeString() }
-
-    setActivePage('home')
-
-    const t = transcript.toLowerCase()
-    if (t.includes('reset context') || t.includes('clear context') || t.includes('forget context')) {
-      resetContext()
-      const reply = "Context cleared. I’ll treat the next request as new."
-      setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
-      speakRef.current?.(reply, lang); clearPending(); return
-    }
-
-    const isChest  = t.includes('chest pain') || t.includes('heart attack') || t.includes('chest hurts')
-    const isBreath = t.includes("can't breathe") || t.includes('cannot breathe') || t.includes('difficulty breathing') || t.includes('shortness of breath')
-    const isMental = t.includes('suicide') || t.includes('kill myself') || t.includes('self harm') || t.includes('want to die')
-
-    if (isChest || isBreath) {
-      const reply = "⚠️ This sounds like a medical emergency. Please call 112 immediately or go to the nearest emergency room. Don't wait — call now."
-      setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
-      speakRef.current?.('This sounds like a medical emergency. Please call 112 immediately.', lang)
-      clearPending(); return
-    }
-    if (isMental) {
-      const reply = "I hear you and I'm really concerned. Please call iCall right now at 9152987821. They want to support you. Are you safe right now?"
-      setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
-      speakRef.current?.('Please call iCall at 9152987821 right now.', lang)
-      clearPending(); return
-    }
-
-    if (t.includes('breathing exercise') || t.includes('4-7-8') || t.includes('breathe with me')) {
-      setShowBreathing(true)
-      const reply = "I’ve opened the breathing exercise. The 4-7-8 technique is great for stress — let's do it together."
-      setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
-      speakRef.current?.(reply, lang)
-      clearPending(); return
-    }
-
-    // Intent confidence gate (before branches)
-    const { intent: guessedIntent, confidence } = detectIntentScore(transcript)
-    if (!guessedIntent || confidence < 0.5) {
-      const reply = `I heard: “${transcript}”. Want me to: 
-1) find a doctor, 
-2) check a medicine interaction, 
-3) create a meal plan, or 
-4) log/check water?`
-      setMessages(prev => [...prev, userMsg, {
-        role:'assistant',
-        content: reply,
-        time: getTimeString(),
-        options: ['Find a doctor','Check a medicine','Make a meal plan','Log water']
-      }])
-      speakRef.current?.('I want to be sure. Should I find a doctor, check a medicine, make a meal plan, or log water?', lang)
-      clearPending(); return
-    }
-
-    if (isAskingSummary(transcript)) {
-      setMessages(prev => [...prev, userMsg])
-      setLoadingSummary(true)
-      const s = await generateSummary(messagesRef.current, import.meta.env.VITE_GROQ_API_KEY)
-      setLoadingSummary(false)
-      if (s) { setSummary(s); speakRef.current?.(`${s.overview}`, lang) }
-      else {
-        const fb = "We need a bit more conversation before I can summarise. Keep chatting!"
-        setMessages(prev => [...prev, { role:'assistant', content:fb, time:getTimeString() }])
-        speakRef.current?.(fb, lang)
-      }
-      clearPending(); return
-    }
-
-    if (isAskingReminders(transcript)) {
-      const rems  = remindersRef.current
-      const reply = rems.length === 0
-        ? "You have no reminders yet. Say 'Remind me to take vitamin D at 8 AM' to add one."
-        : `Your reminders: ${rems.map(r=>`${r.medication} at ${r.times.join(' and ')}`).join('. ')}.`
-      setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
-      speakRef.current?.(reply, lang)
-      clearPending(); return
-    }
-
-    if (isSettingReminder(transcript)) {
-      const { medication, times } = parseReminderRef.current(transcript)
-      await addReminderRef.current(medication, times)
-      const reply = `Done! Reminder set to take ${medication} at ${times.join(' and ')}. I'll notify you on time.`
-      setContextState(cs => ({ ...cs, med: medication, lastIntent:'reminder' }))
-      setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
-      speakRef.current?.(reply, lang)
-      clearPending(); return
-    }
-
-    if (isAppointmentQuery(transcript)) {
-      const data = bookAppointment(transcript)
-      const text = buildAppointmentText(data)
-      setContextState(cs => ({ ...cs, doctor:data.doctor || cs.doctor, location:data.location || cs.location, lastIntent:'appointment' }))
-      setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, appointmentCard:data, time:getTimeString() }])
-      speakRef.current?.(text, lang)
-      clearPending(); return
-    }
-
-    if (isWaterQuery(transcript)) {
-      if (isLoggingWater(transcript)) {
-        const data = logWater(transcript)
-        const text = buildWaterText(data, 'log')
-        setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, waterCard:{...data, log:[]}, waterType:'log', time:getTimeString() }])
-        speakRef.current?.(text, lang)
-      } else {
-        const data = getStatus()
-        const text = buildWaterText(data, 'status')
-        setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, waterCard:data, waterType:'status', time:getTimeString() }])
-        speakRef.current?.(text, lang)
-      }
-      setContextState(cs => ({ ...cs, lastIntent:'water' }))
-      clearPending(); return
-    }
-
-    if (isMealPlanQuery(transcript)) {
-      setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
-      try {
-        const plan = await generateMealPlan(transcript, import.meta.env.VITE_GROQ_API_KEY)
-        const text = buildMealText(plan)
-        setContextState(cs => ({ ...cs, diet: plan?.diet || cs.diet, lastIntent:'meal' }))
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, mealPlanCard:plan, time:getTimeString() }])
-        speakRef.current?.(text, lang)
-        setApiCallCount(prev => prev + 1)
-      } catch {
-        const err = "I couldn't generate a meal plan right now. Please try again."
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:err, time:getTimeString() }])
-        speakRef.current?.(err, lang)
-      }
-      clearPending(); return
-    }
-
-    if (isDoctorQuery(transcript)) {
-      setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
-
-      const cityMatch = transcript.match(/(?:in|near|at|around)\s+([A-Za-z\s]{3,25})(?:\s|$)/i)
-      const mentionedCity = cityMatch ? cityMatch[1].trim() : null
-
-      try {
-        const data = await findNearbyDoctors(transcript)
-        const text = buildDoctorText(data)
-        setContextState(cs => ({ ...cs, location: data?.location || mentionedCity || cs.location, doctor: data?.results?.[0]?.name || cs.doctor, lastIntent:'doctor' }))
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
-        speakRef.current?.(text, lang)
-      } catch (err) {
-        let errMsg
-        if (err.message === 'denied') {
-          errMsg = "📍 Location access is blocked. Tap the lock in the address bar → Site settings → Location → Allow, then try again."
-        } else if (err.message === 'not-supported') {
-          errMsg = "Your browser doesn't support location access. Try opening VoiceWell in Chrome."
-        } else if (err.message === 'timeout' || err.message === 'unavailable') {
-          const fallbackCity = mentionedCity || 'Mumbai'
-          try {
-            const data = await findNearbyDoctors(transcript, fallbackCity)
-            const text = `⚠️ Couldn't get your GPS, so showing results near ${fallbackCity} instead. ${buildDoctorText(data)}`
-            setContextState(cs => ({ ...cs, location: fallbackCity, doctor: data?.results?.[0]?.name || cs.doctor, lastIntent:'doctor' }))
-            setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
-            speakRef.current?.(text, lang)
-            clearPending(); return
-          } catch {
-            errMsg = `📡 Location weak and I couldn't find "${fallbackCity}" either. Try again or say "hospitals in Mumbai".`
-          }
-        } else {
-          errMsg = "Something went wrong while searching for nearby facilities. Please try again in a moment."
-        }
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:errMsg, time:getTimeString() }])
-        speakRef.current?.(errMsg, lang)
-      }
-      clearPending(); return
-    }
-
-    if (isDrugQuery(transcript)) {
-      setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
-      const data = await checkInteraction(transcript)
-      if (data) {
-        const text = buildInteractionText(data)
-        setContextState(cs => ({ ...cs, med: data?.queryDrug || cs.med, lastIntent:'drug' }))
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, drugCard:data, time:getTimeString() }])
-        speakRef.current?.(text, lang)
-        clearPending(); return
-      }
-      setMessages(prev => prev.filter(m=>m.role!=='loading'))
-    }
-
-    if (isBMIQuery(transcript)) {
-      const data = calculateBMI(transcript)
-      if (data) {
-        const text = buildBMIText(data)
-        setContextState(cs => ({ ...cs, lastIntent:'bmi' }))
-        setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, bmiCard:data, time:getTimeString() }])
-        speakRef.current?.(text, lang)
-        clearPending(); return
-      }
-    }
-
-    if (isNutritionQuery(transcript)) {
-      setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
-      const data = await getNutritionRef.current(transcript)
-      if (data) {
-        const text = buildNutrRef.current(data)
-        setContextState(cs => ({ ...cs, diet: data?.diet || cs.diet, lastIntent:'nutrition' }))
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, nutritionCard:data, time:getTimeString() }])
-        setApiCallCount(prev => prev + 1)
-        speakRef.current?.(text, lang)
-        clearPending(); return
-      }
-      setMessages(prev => prev.filter(m=>m.role!=='loading'))
-    }
-
-    if (isWeatherQuery(transcript)) {
-      setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
-      const cityMatch = transcript.match(/(?:in|at|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i)
-      const city      = cityMatch ? cityMatch[1] : 'Mumbai'
-      const data      = await getWeatherRef.current(city)
-      if (data) {
-        const text = buildWeatherRef.current(data)
-        setContextState(cs => ({ ...cs, location: city || cs.location, lastIntent:'weather' }))
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, weatherCard:data, time:getTimeString() }])
-        speakRef.current?.(text, lang)
-        clearPending(); return
-      }
-      setMessages(prev => prev.filter(m=>m.role!=='loading'))
-    }
-
-    // Default: Groq
-    setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
-    const history = messagesRef.current.filter(m=>m.role!=='loading').map(m=>({ role:m.role==='assistant'?'assistant':'user', content:m.content }))
-    const detectedEmotion = await detectEmotionRef.current(transcript)
-    if (detectedEmotion) {
-      setMoodHistory(prev => [...prev.slice(-19), detectedEmotion])
-      if (detectedEmotion === 'stressed' && !showBreathing) setShowBreathing(true)
-    }
-    const emotionPrompt = EMOTION_META[detectedEmotion]?.prompt || ''
-    sendMessageRef.current(transcript, history, emotionPrompt)
-    clearPending()
-
-  }, [isNutritionQuery, isWeatherQuery, isDrugQuery, isBMIQuery, calculateBMI, buildBMIText,
-      checkInteraction, buildInteractionText, showBreathing, isDoctorQuery, findNearbyDoctors,
-      buildDoctorText, isAppointmentQuery, bookAppointment, buildAppointmentText,
-      isWaterQuery, isLoggingWater, logWater, getStatus, buildWaterText,
-      isMealPlanQuery, generateMealPlan, buildMealText])
-
-  useEffect(() => { handleFinalTranscriptRef.current = handleFinalTranscript }, [handleFinalTranscript])
-
-  const { isListening, interimText, startListening, stopListening, error } = useSpeech({
-    onFinalTranscript: handleFinalTranscript, language,
-  })
-
-  const handleClearChat = () => {
-    stop(); setSummary(null); setMoodHistory([]); resetContext()
-    setMessages([{ ...WELCOME, time:getTimeString(), content:"Chat cleared! How can I help you?" }])
-  }
-
-  const turnCount  = Math.max(0, messages.filter(m=>m.role!=='loading').length - 1)
-  const avgLatency = latencies.length ? Math.round(latencies.reduce((a,b)=>a+b,0)/latencies.length) : null
-
-  return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100vh', background:'var(--bg)' }}>
-
-      <ChromeWarning />
-
-      <Header
-        language={language}           onLanguageToggle={() => setLanguage(l=>l==='en-US'?'hi-IN':'en-US')}
-        darkMode={darkMode}           onDarkToggle={() => setDarkMode(d=>!d)}
-        onClearChat={handleClearChat} onSummary={() => onQuery('Give me a session summary')}
-        emotion={emotion}             emotionLoading={emoLoad}
-        reminderCount={reminders.length}
-        onRemindersToggle={() => setActivePage('medications')}
-        isConnected={isConnected}
-        activePage={activePage}       onNavigate={setActivePage}
-      />
-
-      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
-
-        {activePage === 'home' && (
-          <HomePage
-            messages={messages}
-            isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}
-            interimText={interimText} turnCount={turnCount}
-            summary={summary} loadingSummary={loadingSummary}
-            showBreathing={showBreathing} setShowBreathing={setShowBreathing} emotion={emotion}
-            inputValue={inputValue} setInputValue={setInputValue}
-            onMicClick={() => isListening ? stopListening() : startListening()}
-            onStop={stop}
-            onSend={e => { e.preventDefault(); if (!inputValue.trim()) return; onQuery(inputValue.trim()); setInputValue('') }}
-            onCloseSummary={() => setSummary(null)}
-            onSpeak={speak} speak={speak} language={language}
-            onNavigate={setActivePage} error={error}
-            onQuery={onQuery}
-            contextState={contextState}
-            onResetContext={resetContext}
-          />
-        )}
-
-        {activePage === 'health' && (
-          <HealthPage onQuery={onQuery} speak={speak} />
-        )}
-
-        {activePage === 'nutrition' && (
-          <NutritionPage
-            onQuery={onQuery}
-            waterTotal={waterTotal}
-            waterPct={waterPct}
-            waterLog={waterLog}
-            goalMl={goalMl}
-          />
-        )}
-
-        {activePage === 'medications' && (
-          <MedicationsPage
-            reminders={reminders}
-            isMockMode={isMockMode}
-            notifGranted={notifGranted}
-            onRemove={removeReminder}
-            onQuery={onQuery}
-          />
-        )}
-
-        {activePage === 'appointments' && (
-          <AppointmentsPage onQuery={onQuery} />
-        )}
-
-        {activePage === 'dashboard' && (
-          <DashboardPage
-            turnCount={turnCount}
-            avgLatency={avgLatency}
-            apiCallCount={apiCallCount}
-            emotionCount={moodHistory.length}
-            moodHistory={moodHistory}
-            messages={messages}
-          />
-        )}
+        <InputBar
+          ref={inputRef} inputValue={inputValue} setInputValue={setInputValue}
+          isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}
+          onMicClick={onMicClick} onStop={onStop} onSend={onSend} error={error} showWave
+        />
       </div>
 
+      {wide && (
+        <aside style={{
+          flex:1, minWidth:280, maxWidth:420,
+          display:'flex', flexDirection:'column',
+          overflowY:'auto', padding:'1.25rem 1.25rem 1.1rem',
+          gap:14
+        }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
+            <ContextPill turnCount={turnCount}/>
+            <StatusBadge isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}/>
+          </div>
+
+          {contextText && (
+            <Card title="Context">
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', fontSize:12, color:'rgba(255,255,255,0.75)' }}>
+                {contextText}
+              </div>
+              <button onClick={onResetContext} style={{
+                marginTop:8, fontSize:11, padding:'6px 10px', borderRadius:8,
+                border:'1px solid rgba(255,255,255,0.12)',
+                background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.8)',
+                cursor:'pointer'
+              }}>Reset context</button>
+            </Card>
+          )}
+
+          {showBreathing && (
+            <BreathingExercise
+              onClose={() => setShowBreathing && setShowBreathing(false)}
+              onSpeak={text => speak(text, language)}
+            />
+          )}
+
+          <Card title="Quick prompts">
+            <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:8 }}>
+              {CHIPS.slice(0,5).map((c, i) => (
+                <button key={i}
+                  onClick={() => { setInputValue(c.full); setTimeout(()=>inputRef.current?.focus(),50) }}
+                  style={quickButtonStyle}
+                  aria-label={`Prompt: ${c.label}`}
+                >
+                  <span style={{ fontSize:16, flexShrink:0 }}>{c.icon}</span>
+                  <span style={{ fontSize:12.5, color:'rgba(255,255,255,0.72)', fontFamily:'var(--font-body)' }}>{c.label}</span>
+                  <span style={{ marginLeft:'auto', fontSize:11, color:'rgba(255,255,255,0.28)', flexShrink:0 }}>↵</span>
+                </button>
+              ))}
+            </div>
+          </Card>
+        </aside>
+      )}
+    </div>
+  )
+
+  /* HERO mode */
+  return (
+    <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
+      <div style={{ flex:1, overflowY:'auto' }}>
+        <div style={{ maxWidth: 1100, margin:'0 auto', padding: '3.5rem 2rem 2rem' }}>
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:32 }}>
+            <div style={{
+              display:'inline-flex', alignItems:'center', gap:8,
+              padding:'6px 16px', borderRadius:99,
+              background:'rgba(0,232,122,0.08)',
+              border:'1px solid rgba(0,232,122,0.2)',
+            }}>
+              <span style={{ width:7, height:7, borderRadius:'50%', background:'#00e87a', boxShadow:'0 0 10px #00e87a', display:'inline-block' }}/>
+              <span style={{ fontSize:11, fontWeight:700, color:'#00e87a', fontFamily:'var(--font-mono)', letterSpacing:'0.1em' }}>
+                AI VOICE AGENTS · HACKATHON 2026
+              </span>
+            </div>
+          </div>
+
+          <div style={{ textAlign:'center', marginBottom:20 }}>
+            <h1 style={{
+              fontFamily:'var(--font-display)', margin:0,
+              fontSize:'clamp(42px, 6vw, 76px)',
+              fontWeight:800, lineHeight:1.05,
+              letterSpacing:'-2px',
+            }}>
+              <span style={{ color:'rgba(255,255,255,0.9)' }}>Your AI </span>
+              <span style={{
+                color:'#00e87a',
+                textShadow:'0 0 60px rgba(0,232,122,0.35), 0 0 120px rgba(0,232,122,0.15)',
+              }}>Health</span>
+              <br/>
+              <span style={{ color:'rgba(255,255,255,0.9)' }}>Companion</span>
+            </h1>
+          </div>
+
+          <p style={{
+            textAlign:'center', margin:'0 auto 32px',
+            fontSize:17, color:'rgba(255,255,255,0.45)',
+            lineHeight:1.7, maxWidth:560,
+            fontFamily:'var(--font-body)', fontWeight:400,
+          }}>
+            Voice-first. Emotion-aware. Multilingual.
+            Ask about symptoms, find doctors nearby, manage medications —
+            all through <span style={{ color:'rgba(255,255,255,0.75)', fontWeight:500 }}>natural conversation</span>.
+          </p>
+
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:36 }}>
+            <div style={{
+              display:'inline-flex', alignItems:'center', gap:12,
+              padding:'8px 18px', borderRadius:10,
+              background:'rgba(255,255,255,0.04)',
+              border:'1px solid rgba(255,255,255,0.09)',
+              minWidth:320,
+            }}>
+              <span style={{ fontSize:10, fontWeight:700, color:'#00e87a', fontFamily:'var(--font-mono)', letterSpacing:'0.07em', flexShrink:0 }}>
+                LIVE
+              </span>
+              <div style={{ width:1, height:14, background:'rgba(255,255,255,0.12)', flexShrink:0 }}/>
+              <span style={{ fontSize:12, color:'rgba(255,255,255,0.6)', fontFamily:'var(--font-mono)', flex:1, textAlign:'center' }}>
+                {TICKER[tick]}
+              </span>
+              <span style={{ fontSize:10, color:'rgba(255,255,255,0.25)', fontFamily:'var(--font-mono)', flexShrink:0 }}>
+                {tick + 1}/{TICKER.length}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
+            <div style={{
+              background:'rgba(255,255,255,0.03)',
+              border:'1px solid rgba(255,255,255,0.08)',
+              borderRadius:16,
+              padding:'1.75rem',
+              gridRow:'span 2',
+              display:'flex', flexDirection:'column'
+            }}>
+              <div style={{
+                fontSize:10, fontWeight:600, color:'rgba(255,255,255,0.25)',
+                fontFamily:'var(--font-mono)', letterSpacing:'0.1em', marginBottom:16, textTransform:'uppercase'
+              }}>
+                Quick start
+              </div>
+              <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6 }}>
+                {CHIPS.map((c, i) => (
+                  <button key={i} onClick={() => { setInputValue(c.full); setTimeout(()=>inputRef.current?.focus(),50) }}
+                    style={{
+                      display:'flex', alignItems:'center', gap:10,
+                      padding:'10px 13px', borderRadius:10,
+                      border:'1px solid rgba(255,255,255,0.07)',
+                      background:'rgba(255,255,255,0.03)',
+                      cursor:'pointer', textAlign:'left',
+                      transition:'all 0.14s', width:'100%',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'rgba(0,232,122,0.07)'
+                      e.currentTarget.style.borderColor = 'rgba(0,232,122,0.25)'
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'
+                    }}
+                  >
+                    <span style={{ fontSize:16, flexShrink:0 }}>{c.icon}</span>
+                    <span style={{ fontSize:12.5, color:'rgba(255,255,255,0.65)', fontFamily:'var(--font-body)' }}>{c.label}</span>
+                    <span style={{ marginLeft:'auto', fontSize:10, color:'rgba(255,255,255,0.2)', flexShrink:0 }}>→</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{
+              background:'rgba(255,255,255,0.03)',
+              border:'1px solid rgba(255,255,255,0.08)',
+              borderRadius:16,
+              padding:'1.75rem 2rem',
+              gridColumn:'span 2'
+            }}>
+              <div style={{
+                fontSize:10, fontWeight:600, color:'rgba(255,255,255,0.25)',
+                fontFamily:'var(--font-mono)', letterSpacing:'0.1em', marginBottom:16, textTransform:'uppercase'
+              }}>
+                All capabilities
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+                {[
+                  { icon:'🎙️', name:'Voice pipeline',    tag:'STT · LLM · TTS',         color:'#00e87a' },
+                  { icon:'😰', name:'Emotion detection',  tag:'HuggingFace AI',          color:'#a78bfa' },
+                  { icon:'🧠', name:'8-turn memory',      tag:'Multi-turn context',      color:'#60a5fa' },
+                  { icon:'🇮🇳', name:'Hindi support',    tag:'Auto-detect language',    color:'#fbbf24' },
+                  { icon:'💊', name:'Medication alerts',  tag:'Firebase + browser notif',color:'#00e87a' },
+                  { icon:'🏥', name:'Doctor finder',      tag:'GPS + OpenStreetMap',     color:'#fbbf24' },
+                  { icon:'📊', name:'BMI calculator',     tag:'Instant voice calc',      color:'#60a5fa' },
+                  { icon:'💊', name:'Drug interactions',  tag:'OpenFDA database',        color:'#ff6b6b' },
+                  { icon:'🧘', name:'Breathing guide',    tag:'4-7-8 animated',         color:'#a78bfa' },
+                  { icon:'💧', name:'Water tracker',      tag:'Daily goal + reminders',  color:'#38bdf8' },
+                  { icon:'🍽️', name:'Meal planner',      tag:'7-day AI-generated',      color:'#00e87a' },
+                  { icon:'📅', name:'Calendar booking',   tag:'Google Calendar API',     color:'#60a5fa' },
+                ].map((c, i) => (
+                  <div key={i} style={{
+                    display:'flex', alignItems:'center', gap:9,
+                    padding:'8px 10px', borderRadius:9,
+                    background:'rgba(255,255,255,0.02)',
+                    border:'1px solid rgba(255,255,255,0.05)',
+                    transition:'all 0.12s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = `${c.color}0d`
+                    e.currentTarget.style.borderColor = `${c.color}30`
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.02)'
+                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'
+                  }}
+                  >
+                    <div style={{
+                      width:28, height:28, borderRadius:7, flexShrink:0,
+                      background:`${c.color}18`,
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:13,
+                    }}>{c.icon}</div>
+                    <div style={{ minWidth:0 }}>
+                      <div style={{ fontSize:11.5, fontWeight:600, color:'rgba(255,255,255,0.7)', lineHeight:1.2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.name}</div>
+                      <div style={{ fontSize:9.5, color:'rgba(255,255,255,0.25)', fontFamily:'var(--font-mono)', marginTop:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{c.tag}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            display:'flex', alignItems:'center', gap:8, justifyContent:'center',
+            flexWrap:'wrap', padding:'1rem 0 2rem',
+          }}>
+            <span style={{ fontSize:9.5, color:'rgba(255,255,255,0.2)', fontFamily:'var(--font-mono)', marginRight:4, letterSpacing:'0.08em' }}>
+              POWERED BY
+            </span>
+            {['React 18','Vite','Groq LLM','HuggingFace','Firebase','OpenStreetMap','OpenFDA','Google Calendar'].map(t => (
+              <span key={t} style={{
+                fontSize:10, padding:'3px 9px', borderRadius:99,
+                background:'rgba(255,255,255,0.04)',
+                border:'1px solid rgba(255,255,255,0.08)',
+                color:'rgba(255,255,255,0.35)',
+                fontFamily:'var(--font-mono)',
+              }}>{t}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <InputBar
+        ref={inputRef} inputValue={inputValue} setInputValue={setInputValue}
+        isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}
+        onMicClick={onMicClick} onStop={onStop} onSend={onSend} error={error} showWave={false}
+      />
     </div>
   )
 }
+
+/* ─── helpers & styles ─────────────────────────────────────────── */
+function ContextStatePill({ text }) {
+  return (
+    <div style={{
+      display:'inline-flex', alignItems:'center', gap:6,
+      padding:'6px 12px', borderRadius:12,
+      background:'rgba(255,255,255,0.05)',
+      border:'1px solid rgba(255,255,255,0.1)',
+      color:'rgba(255,255,255,0.75)',
+      fontSize:11, fontFamily:'var(--font-mono)'
+    }}>
+      🧭 Context · {text}
+    </div>
+  )
+}
+
+function StatusBadge({ isListening, isSpeaking, isLoading }) {
+  let label = 'Idle', color = 'rgba(255,255,255,0.35)'
+  if (isListening) { label = 'Listening…'; color = '#22d3ee' }
+  else if (isSpeaking) { label = 'Speaking…'; color = '#a78bfa' }
+  else if (isLoading) { label = 'Thinking…'; color = '#00e87a' }
+  return (
+    <div role="status" aria-live="polite"
+      style={{
+        padding:'6px 12px', borderRadius:12,
+        border:'1px solid rgba(255,255,255,0.08)',
+        color, fontSize:12, fontFamily:'var(--font-mono)'
+      }}>
+      ● {label}
+    </div>
+  )
+}
+
+function Card({ title, children }) {
+  return (
+    <div style={{
+      background:'rgba(255,255,255,0.03)',
+      border:'1px solid rgba(255,255,255,0.08)',
+      borderRadius:14,
+      padding:'1rem 1.1rem'
+    }}>
+      <div style={{
+        fontSize:11, fontWeight:600, color:'rgba(255,255,255,0.3)',
+        fontFamily:'var(--font-mono)', letterSpacing:'0.08em', marginBottom:10, textTransform:'uppercase'
+      }}>
+        {title}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+const quickButtonStyle = {
+  display:'flex', alignItems:'center', gap:10,
+  padding:'10px 12px', borderRadius:10,
+  border:'1px solid rgba(255,255,255,0.07)',
+  background:'rgba(255,255,255,0.03)',
+  cursor:'pointer', textAlign:'left',
+  transition:'all 0.14s', width:'100%'
+}
+
+const InputBar = React.forwardRef(function InputBar(
+  { inputValue, setInputValue, isListening, isSpeaking, isLoading, onMicClick, onStop, onSend, error, showWave },
+  ref
+) {
+  return (
+    <div style={{
+      position:'sticky', bottom:0, left:0, right:0, zIndex:10,
+      borderTop:'1px solid rgba(255,255,255,0.07)',
+      background:'rgba(8,8,8,0.95)',
+      backdropFilter:'blur(16px)',
+      padding:'1rem 1.5rem 1.1rem',
+      flexShrink:0,
+    }}>
+      {showWave && <div style={{ marginBottom:10 }}><Waveform isActive={isSpeaking}/></div>}
+      <div style={{ display:'flex', alignItems:'center', gap:14 }}>
+        <MicButton isListening={isListening} isSpeaking={isSpeaking} onClick={onMicClick} onStop={onStop} error={error}/>
+        <div style={{ flex:1 }}>
+          <form onSubmit={onSend} style={{ display:'flex', gap:8 }}>
+            <input
+              ref={ref}
+              type="text"
+              value={inputValue}
+              onChange={e => setInputValue(e.target.value)}
+              disabled={isListening || isSpeaking || isLoading}
+              placeholder="Or type here — describe symptoms, ask anything…"
+              aria-label="Message VoiceWell"
+              style={{
+                flex:1, padding:'12px 20px', borderRadius:99,
+                border:'1px solid rgba(255,255,255,0.1)',
+                background:'rgba(255,255,255,0.06)',
+                color:'rgba(255,255,255,0.9)', fontSize:14,
+                fontFamily:'var(--font-body)', outline:'none',
+                transition:'all 0.15s',
+              }}
+              onFocus={e => { e.target.style.borderColor='rgba(0,232,122,0.45)'; e.target.style.background='rgba(255,255,255,0.08)' }}
+              onBlur={e  => { e.target.style.borderColor='rgba(255,255,255,0.1)'; e.target.style.background='rgba(255,255,255,0.06)' }}
+            />
+            <button type="submit" disabled={isListening||isSpeaking||isLoading||!inputValue.trim()} style={{
+              padding:'12px 28px', borderRadius:99, border:'none', flexShrink:0,
+              background: inputValue.trim()&&!isLoading ? 'linear-gradient(135deg,#00e87a,#00c264)' : 'rgba(255,255,255,0.06)',
+              color: inputValue.trim()&&!isLoading ? '#000' : 'rgba(255,255,255,0.2)',
+              fontSize:14, fontWeight:700, cursor: inputValue.trim()?'pointer':'not-allowed',
+              fontFamily:'var(--font-display)', transition:'all 0.18s',
+              boxShadow: inputValue.trim()&&!isLoading ? '0 4px 18px rgba(0,232,122,0.25)' : 'none',
+            }}>Send</button>
+          </form>
+          <div style={{ display:'flex', justifyContent:'space-between', marginTop:5, padding:'0 4px' }}>
+            <span style={{ fontSize:10, color:'rgba(255,255,255,0.15)', fontFamily:'var(--font-mono)' }}>
+              Chrome only · No audio stored · Voice stays local
+            </span>
+            {isLoading && <span style={{ fontSize:10, color:'#00e87a', fontFamily:'var(--font-mono)' }}>● thinking…</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+})
