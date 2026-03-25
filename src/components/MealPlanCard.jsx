@@ -54,53 +54,11 @@ function CaloriRing({ value, total }) {
   )
 }
 
-function LoadingInline({ onRetry }) {
-  return (
-    <div style={{
-      display:'flex', alignItems:'center', gap:10,
-      background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)',
-      padding:'10px 12px', borderRadius:10, margin:'10px 14px'
-    }}>
-      <div className="spinner" style={{
-        width:16, height:16, borderRadius:'50%',
-        border:'2px solid rgba(255,255,255,0.2)', borderTopColor:'#00e87a',
-        animation:'spin 1s linear infinite'
-      }} />
-      <div style={{ fontSize:12, color:'rgba(255,255,255,0.7)' }}>Generating meal plan…</div>
-      {onRetry && (
-        <button onClick={onRetry} style={{
-          marginLeft:'auto', fontSize:12, fontWeight:700,
-          background:'rgba(0,232,122,0.12)', color:'#00e87a',
-          border:'1px solid rgba(0,232,122,0.35)', borderRadius:8,
-          padding:'6px 10px', cursor:'pointer'
-        }}>Retry</button>
-      )}
-    </div>
-  )
-}
-
-export default function MealPlanCard({ plan, onRetry }) {
+export default function MealPlanCard({ plan }) {
   const [activeDay,    setActiveDay]  = useState(0)
   const [expandedMeal, setExpanded]   = useState(null)
 
-  if (plan === 'loading') {
-    return <LoadingInline />
-  }
-  if (!plan || !plan.days?.length) {
-    return (
-      <div style={{
-        border:'1px dashed rgba(255,255,255,0.12)', borderRadius:14,
-        padding:'12px 14px', background:'rgba(255,255,255,0.02)'
-      }}>
-        <div style={{fontSize:12, color:'rgba(255,255,255,0.6)'}}>No meal plan yet.</div>
-        <button onClick={onRetry} style={{
-          marginTop:8, padding:'8px 12px', borderRadius:10,
-          border:'1px solid rgba(0,232,122,0.4)', background:'rgba(0,232,122,0.12)',
-          color:'#00e87a', fontWeight:700, cursor:'pointer', fontSize:12
-        }}>Generate again</button>
-      </div>
-    )
-  }
+  if (!plan?.days?.length) return null
 
   const day    = plan.days[activeDay]
   const meals  = ['breakfast', 'lunch', 'snack', 'dinner']
@@ -122,6 +80,7 @@ export default function MealPlanCard({ plan, onRetry }) {
 
   return (
     <div style={{ minWidth: 260 }}>
+
       {/* Header */}
       <div style={{
         padding: '14px 14px 12px',
@@ -277,6 +236,7 @@ export default function MealPlanCard({ plan, onRetry }) {
         background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
+        {/* Mini bar chart */}
         <div style={{ display: 'flex', gap: 3, alignItems: 'flex-end', height: 20 }}>
           {plan.days.map((d, i) => {
             const dayKcal = meals.reduce((s, m) => s + (d[m]?.calories || 0), 0)
@@ -292,6 +252,7 @@ export default function MealPlanCard({ plan, onRetry }) {
           })}
         </div>
 
+        {/* Prev / counter / Next */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={() => { setActiveDay(d => Math.max(0, d-1)); setExpanded(null) }}
             disabled={activeDay === 0}
@@ -315,10 +276,7 @@ export default function MealPlanCard({ plan, onRetry }) {
         </div>
       </div>
 
-      <style>{`
-        @keyframes mealFadeIn { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
-        @keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }
-      `}</style>
+      <style>{`@keyframes mealFadeIn { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }`}</style>
     </div>
   )
 }
