@@ -255,6 +255,12 @@ export default function App() {
     const { intent: guessedIntent, confidence } = detectIntentScore(transcript)
     const effectiveConfidence = symptomDetected ? 1 : confidence
 
+    // Gate doctor intent: only if user clearly asks to find/search/book/near
+    const doctorQueryAllowed =
+      isDoctorQuery(transcript) &&
+      /(find|near|nearby|search|locate|hospital|clinic|appointment|book)/i.test(t) &&
+      !symptomDetected
+
     if (!symptomDetected && (!guessedIntent || effectiveConfidence < 0.5)) {
       const reply = `I heard: “${transcript}”. Want me to: 
 1) find a doctor, 
@@ -333,7 +339,8 @@ export default function App() {
       clearPending(); return
     }
 
-    if (isDoctorQuery(transcript)) {
+    // Doctor finder only if allowed
+    if (doctorQueryAllowed) {
       setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
 
       const cityMatch = transcript.match(/(?:in|near|at|around)\s+([A-Za-z\s]{3,25})(?:\s|$)/i)
