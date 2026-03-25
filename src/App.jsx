@@ -36,15 +36,24 @@ const WELCOME = {
   time:    getTimeString(),
 }
 
-const isAskingReminders = t => {
-  const l = t.toLowerCase()
-  return ['medication','reminder','medicine','tablet','pill','schedule'].some(w => l.includes(w)) &&
-         ['what','list','show','today','have','my'].some(w => l.includes(w))
-}
 const isSettingReminder = t => {
   const l = t.toLowerCase()
-  return (l.includes('remind') || l.includes('reminder')) &&
-         (l.includes('take') || l.includes('tablet') || l.includes('medicine') || l.includes('pill'))
+  // Allow common typos: remaind, remined, remimd
+  const hasIntent = /re?mi[nm]d/.test(l) || l.includes('set a reminder') || l.includes('add reminder') || l.includes('schedule')
+  // Must mention taking something OR a medicine name
+  const hasTake = l.includes('take') || l.includes('tablet') || l.includes('medicine') || l.includes('pill') ||
+                  l.includes('drug') || l.includes('vitamin') || l.includes('capsule') || l.includes('dose') ||
+                  l.includes('aspirin') || l.includes('paracetamol') || l.includes('ibuprofen') || l.includes('insulin')
+  // Must have a time reference
+  const hasTime = /\d/.test(l) || ['morning','afternoon','evening','night','noon','am','pm','daily','everyday','tonight','today'].some(w => l.includes(w))
+  return hasIntent && (hasTake || hasTime)
+}
+const isAskingReminders = t => {
+  const l = t.toLowerCase()
+  // Only asking — must have question/list words, must NOT be setting
+  if (isSettingReminder(t)) return false
+  return ['medication','reminder','medicine','tablet','pill','schedule'].some(w => l.includes(w)) &&
+         ['what','list','show','have','my','all'].some(w => l.includes(w))
 }
 const isAskingSummary = t => {
   const l = t.toLowerCase()

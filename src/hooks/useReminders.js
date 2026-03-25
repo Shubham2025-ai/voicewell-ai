@@ -87,20 +87,33 @@ function todayStr() { return new Date().toISOString().slice(0,10) }
 
 // ── Parse natural language reminder ──────────────────────────────────────────
 export function parseReminderText(text) {
-  // ── Step 1: Extract medication name ────────────────────────────────────────
-  const medMatch = text.toLowerCase().match(
-    /(?:remind\s+me\s+to\s+take|take|taking)\s+([a-z0-9 ]+?)(?:\s+at\b|\s+every\b|\s+daily\b|$)/i
-  )
-  const medication = medMatch ? medMatch[1].trim() : 'medication'
+  const t = text.toLowerCase()
 
-  // ── Step 2: Extract times — single-pass, longest match first ───────────────
-  // Strategy: replace the full text with one regex that grabs "H:MM AM/PM" OR "H AM/PM"
-  // Using a single ordered alternation prevents "09" leaking from "12:09 AM"
+  // ── Step 1: Extract medication name ───────────────────────────────────────
+  // Try multiple patterns in priority order
+  let medication = 'medication'
+
+  // Pattern A: "remind me to take X at ..."  OR  "take X at ..."
+  const pA = t.match(/(?:remind\s+me\s+to\s+take|to\s+take|take)\s+(my\s+)?([a-z0-9][a-z0-9 ]{1,30}?)(?:\s+at\b|\s+every\b|\s+daily\b|\s+tonight|\s+today|\s+tomorrow|$)/i)
+  if (pA) medication = pA[2].trim()
+
+  // Pattern B: "reminder for X at ..." OR "set reminder for X"
+  else {
+    const pB = t.match(/reminder\s+(?:for|to\s+take)\s+(my\s+)?([a-z0-9][a-z0-9 ]{1,30}?)(?:\s+at\b|\s+every\b|\s+daily\b|$)/i)
+    if (pB) medication = pB[2].trim()
+  }
+
+  // Clean up medication name
+  medication = medication.replace(/\b(my|the|a|an)\b/g, '').replace(/\s+/g, ' ').trim()
+  if (!medication || medication.length < 2) medication = 'medication'
+
+  // ── Step 2: Extract times ─────────────────────────────────────────────────
   const wordMap = {
     morning:   '8:00 AM',
     afternoon: '2:00 PM',
     evening:   '6:00 PM',
     night:     '9:00 PM',
+    tonight:   '9:00 PM',
     noon:      '12:00 PM',
     lunch:     '12:00 PM',
     midnight:  '12:00 AM',
@@ -109,22 +122,21 @@ export function parseReminderText(text) {
   const times   = []
   const seen24h = new Set()
 
-  // Single regex — order matters: "H:MM AM/PM" MUST come before "H AM/PM"
-  const timeRe = /\b(\d{1,2}:\d{2}\s*(?:am|pm)|\d{1,2}\s+(?:am|pm))\b/gi
+  // Single regex — H:MM AM/PM MUST come before H AM/PM to avoid partial match
+  const timeRe = /\b(\d{1,2}:\d{2}\s*(?:am|pm)|\d{1,2}\s*(?:am|pm))\b/gi
   let match
   while ((match = timeRe.exec(text)) !== null) {
-    const raw      = match[1].trim()
-    const norm     = to24h(raw)
+    const raw  = match[1].trim()
+    const norm = to24h(raw)
     if (norm && !seen24h.has(norm)) {
       seen24h.add(norm)
-      // Pretty-print display label e.g. "12:09 AM"
-      times.push(raw.replace(/\s+/g,' ').toUpperCase())
+      times.push(raw.replace(/\s+/g, ' ').toUpperCase())
     }
   }
 
-  // Check for word-based times
+  // Word-based times
   for (const [word, val] of Object.entries(wordMap)) {
-    if (text.toLowerCase().includes(word)) {
+    if (t.includes(word)) {
       const norm = to24h(val)
       if (norm && !seen24h.has(norm)) {
         seen24h.add(norm)
