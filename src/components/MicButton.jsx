@@ -43,6 +43,11 @@ export default function MicButton({ isListening, isSpeaking, onClick, onStop, er
     return () => cancelAnimationFrame(animRef.current)
   }, [isListening, isSpeaking])
 
+  const label = isSpeaking ? 'Stop speaking' : isListening ? 'Stop listening' : 'Start voice input'
+  const statusText = isSpeaking ? 'speaking — tap to stop' : isListening ? 'listening…' : 'tap to speak'
+  const statusColor = isSpeaking ? '#8b5cf6' : isListening ? '#ff3d5a' : 'rgba(255,255,255,0.55)'
+  const dotColor = isSpeaking ? '#8b5cf6' : isListening ? '#ff3d5a' : '#6b7280'
+
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:8 }}>
       <div style={{ position:'relative', width:130, height:130, flexShrink:0 }}>
@@ -58,6 +63,9 @@ export default function MicButton({ isListening, isSpeaking, onClick, onStop, er
 
         {/* Main button */}
         <button
+          type="button"
+          aria-pressed={isListening || isSpeaking}
+          aria-label={label}
           onClick={isSpeaking ? onStop : onClick}
           className={!isListening && !isSpeaking ? 'mic-breathe' : ''}
           style={{
@@ -68,6 +76,7 @@ export default function MicButton({ isListening, isSpeaking, onClick, onStop, er
             display:'flex', alignItems:'center', justifyContent:'center',
             transition:'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
             fontFamily:'var(--font-body)',
+            outline:'none',
             ...(isSpeaking ? {
               background:'linear-gradient(135deg,#6366f1,#8b5cf6)',
               boxShadow:'0 4px 16px rgba(99,102,241,0.35)',
@@ -80,30 +89,36 @@ export default function MicButton({ isListening, isSpeaking, onClick, onStop, er
               boxShadow:'0 4px 16px rgba(0,232,122,0.3)',
             }),
           }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              isSpeaking ? onStop?.() : onClick?.()
+            }
+          }}
         >
           {isSpeaking ? '⏹' : isListening ? '⏹' : '🎤'}
         </button>
       </div>
 
       {/* Status */}
-      <div style={{
-        padding:'5px 14px', borderRadius:99,
+      <div role="status" aria-live="polite" style={{
+        padding:'6px 14px', borderRadius:99,
         background:'#0f0f0f', border:'1px solid #1e1e1e',
-        fontSize:10, fontFamily:'var(--font-mono)',
-        color: isSpeaking ? '#8b5cf6' : isListening ? '#ff3d5a' : '#333',
-        display:'flex', alignItems:'center', gap:5,
+        fontSize:11, fontFamily:'var(--font-mono)',
+        color: statusColor,
+        display:'flex', alignItems:'center', gap:6,
         transition:'all 0.3s',
       }}>
         <div style={{
-          width:5, height:5, borderRadius:'50%',
-          background: isSpeaking ? '#8b5cf6' : isListening ? '#ff3d5a' : '#222',
+          width:6, height:6, borderRadius:'50%',
+          background: dotColor,
           boxShadow: isListening ? '0 0 6px #ff3d5a' : isSpeaking ? '0 0 6px #8b5cf6' : 'none',
         }}/>
-        {isSpeaking ? 'speaking — tap to stop' : isListening ? 'listening…' : 'tap to speak'}
+        {statusText}
       </div>
 
-      {error==='mic-denied'&&<div style={{fontSize:11,color:'#ff3d5a',textAlign:'center',maxWidth:200}}>Mic blocked. Allow in Chrome → refresh.</div>}
-      {error==='not-supported'&&<div style={{fontSize:11,color:'#ff3d5a',textAlign:'center',maxWidth:200}}>Open in Chrome for voice.</div>}
+      {error==='mic-denied'   && <div style={{fontSize:11,color:'#ff3d5a',textAlign:'center',maxWidth:200}}>Mic blocked. Allow in Chrome → refresh.</div>}
+      {error==='not-supported'&& <div style={{fontSize:11,color:'#ff3d5a',textAlign:'center',maxWidth:200}}>Open in Chrome for voice.</div>}
     </div>
   )
 }
