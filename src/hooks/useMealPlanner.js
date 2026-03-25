@@ -54,26 +54,26 @@ export function useMealPlanner() {
       : isDiabetic ? 'diabetes management (low glycemic index, controlled carbs)'
       : 'balanced healthy living (~1800-2000 kcal/day)'
 
-    const callGroq = async (days) => {
+    const callGroq = async () => {
       const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
-          max_tokens: 2000,
+          max_tokens: 2200,
           temperature: 0.3,
           messages: [
             {
               role: 'system',
-              content: `You are an Indian nutritionist. Generate a ${days}-day meal plan.
+              content: `You are an Indian nutritionist. Generate a 7-day meal plan.
 CRITICAL: Return ONLY a raw JSON object. No markdown, no backticks, no explanation.
 Exact format:
 {"goal":"string","diet":"string","calories":"string","days":[{"day":"Monday","breakfast":{"name":"string","items":["item1","item2"],"calories":300},"lunch":{"name":"string","items":["item1","item2"],"calories":450},"snack":{"name":"string","items":["item1"],"calories":150},"dinner":{"name":"string","items":["item1","item2"],"calories":400}}]}
-Keep item names SHORT (max 3 words each). Include exactly ${days} days.`
+Keep item names SHORT (max 3 words each). Include exactly 7 days.`
             },
             {
               role: 'user',
-              content: `${days}-day ${diet} Indian meal plan for ${goal}.`
+              content: `7-day ${diet} Indian meal plan for ${goal}.`
             }
           ]
         })
@@ -82,28 +82,31 @@ Keep item names SHORT (max 3 words each). Include exactly ${days} days.`
       return await r.json()
     }
 
-    // Try 7-day plan first, fall back to 3-day if it fails
+    // Enforce 7 full days; retry once if incomplete
     let plan = null
-    for (const days of [7, 3]) {
+    for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const data = await callGroq(days)
+        const data = await callGroq()
         const raw  = data.choices?.[0]?.message?.content?.trim()
         if (!raw) continue
         const cleaned = raw.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```$/,'').trim()
         const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
         if (!jsonMatch) continue
         const parsed = JSON.parse(jsonMatch[0])
-        if (parsed.days?.length > 0) { plan = parsed; break }
+        if (parsed.days?.length >= 7) { plan = parsed; break }
       } catch { continue }
     }
 
-    if (!plan) throw new Error('Could not generate meal plan')
+    if (!plan) throw new Error('Could not generate full 7-day meal plan')
+    // If model gave more than 7, trim to first 7
+    if (plan.days.length > 7) plan.days = plan.days.slice(0,7)
+    plan.calories = plan.calories || '~2000 kcal/day'
     return plan
   }, [])
 
   const buildMealText = useCallback((plan) => {
     const day1 = plan.days[0]
-    return `I've created a ${plan.days.length}-day ${plan.diet} meal plan for ${plan.goal}. Here's your plan starting ${plan.days[0].day} — swipe through each day. ${plan.days[0].day} breakfast: ${day1.breakfast.name}. Lunch: ${day1.lunch.name}. Dinner: ${day1.dinner.name}.`
+    return `I've created a 7-day ${plan.diet} meal plan for ${plan.goal}. Here's your plan starting ${plan.days[0].day} — swipe through each day. ${plan.days[0].day} breakfast: ${day1.breakfast.name}. Lunch: ${day1.lunch.name}. Dinner: ${day1.dinner.name}.`
   }, [])
 
   return { isMealPlanQuery, generateMealPlan, buildMealText }
