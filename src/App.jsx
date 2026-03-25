@@ -235,6 +235,21 @@ export default function App() {
       clearPending(); return
     }
 
+    // --- Summary FIRST (before intent gate) ---
+    if (isAskingSummary(transcript)) {
+      setMessages(prev => [...prev, userMsg])
+      setLoadingSummary(true)
+      const s = await generateSummary(messagesRef.current, import.meta.env.VITE_GROQ_API_KEY)
+      setLoadingSummary(false)
+      if (s) { setSummary(s); speakRef.current?.(`${s.overview}`, lang) }
+      else {
+        const fb = "We need a bit more conversation before I can summarise. Keep chatting!"
+        setMessages(prev => [...prev, { role:'assistant', content:fb, time:getTimeString() }])
+        speakRef.current?.(fb, lang)
+      }
+      clearPending(); return
+    }
+
     // Intent confidence gate with symptom override
     const symptomDetected = isSymptom(transcript)
     const { intent: guessedIntent, confidence } = detectIntentScore(transcript)
@@ -253,20 +268,6 @@ export default function App() {
         options: ['Find a doctor','Check a medicine','Make a meal plan','Log water']
       }])
       speakRef.current?.('I want to be sure. Should I find a doctor, check a medicine, make a meal plan, or log water?', lang)
-      clearPending(); return
-    }
-
-    if (isAskingSummary(transcript)) {
-      setMessages(prev => [...prev, userMsg])
-      setLoadingSummary(true)
-      const s = await generateSummary(messagesRef.current, import.meta.env.VITE_GROQ_API_KEY)
-      setLoadingSummary(false)
-      if (s) { setSummary(s); speakRef.current?.(`${s.overview}`, lang) }
-      else {
-        const fb = "We need a bit more conversation before I can summarise. Keep chatting!"
-        setMessages(prev => [...prev, { role:'assistant', content:fb, time:getTimeString() }])
-        speakRef.current?.(fb, lang)
-      }
       clearPending(); return
     }
 
