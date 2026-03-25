@@ -5,7 +5,7 @@ import MicButton from './MicButton.jsx'
 import SessionSummary from './SessionSummary.jsx'
 import BreathingExercise from './BreathingExercise.jsx'
 
-/* ─── constants ─────────────────────────────���───────────────── */
+/* ─── constants ─────────────────────────────────────────────── */
 const CHIPS = [
   { icon:'🤒', label:'Headache',      full:'I have a headache since morning' },
   { icon:'😰', label:'Stress',        full:"I'm feeling very stressed and anxious" },
@@ -82,7 +82,7 @@ export default function HomePage({
               : <ChatBubble
                   key={i}
                   message={m}
-                  onSpeak={(text) => speak(text, language)}   // <-- play button uses this
+                  onSpeak={(text) => speak(text, language)}   // play button uses this
                 />
           )}
           {loadingSummary && (
@@ -334,7 +334,7 @@ export default function HomePage({
             <span style={{ fontSize:9.5, color:'rgba(255,255,255,0.2)', fontFamily:'var(--font-mono)', marginRight:4, letterSpacing:'0.08em' }}>
               POWERED BY
             </span>
-            {['React 18','Vite','Groq LLM','HuggingFace','Firebase','OpenStreetMap','OpenFDA','OpenWeatherMap','Google Calendar'].map(t => (
+            {['React 18','Vite','Groq LLM','HuggingFace','Firebase','OpenStreetMap','OpenFDA','Google Calendar'].map(t => (
               <span key={t} style={{
                 fontSize:10, padding:'3px 9px', borderRadius:99,
                 background:'rgba(255,255,255,0.04)',
@@ -451,7 +451,7 @@ const InputBar = React.forwardRef(function InputBar(
           </form>
           <div style={{ display:'flex', justifyContent:'space-between', marginTop:5, padding:'0 4px' }}>
             <span style={{ fontSize:10, color:'rgba(255,255,255,0.15)', fontFamily:'var(--font-mono)' }}>
-              Chrome only · No audio stored · Voice stays local
+              Chrome only · No audio stored �� Voice stays local
             </span>
             {isLoading && <span style={{ fontSize:10, color:'#00e87a', fontFamily:'var(--font-mono)' }}>● thinking…</span>}
           </div>
