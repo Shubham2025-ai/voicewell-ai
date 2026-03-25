@@ -1,5 +1,4 @@
 import React from 'react'
-import WeatherCard from './WeatherCard.jsx'
 import SkeletonLoader from './SkeletonLoader.jsx'
 
 function RetryInline({ onRetry }) {
@@ -9,6 +8,25 @@ function RetryInline({ onRetry }) {
       background:'rgba(96,165,250,0.16)', color:'#60a5fa',
       border:'1px solid rgba(96,165,250,0.35)', fontSize:12, fontWeight:700, cursor:'pointer'
     }}>Retry</button>
+  )
+}
+
+// Local WeatherCard (copied from ChatBubble, now reusable here)
+function WeatherCard({ data }) {
+  if (!data) return null
+  return (
+    <div>
+      <div style={{fontFamily:'var(--font-display)',fontWeight:700,fontSize:12,marginBottom:6}}>🌤️ {data.city}</div>
+      <div style={{fontSize:28,fontWeight:300,fontFamily:'var(--font-display)',marginBottom:3}}>{data.temp}°C</div>
+      <div style={{fontSize:12,opacity:0.7,marginBottom:8,textTransform:'capitalize'}}>{data.description}</div>
+      {data.aqi && (
+        <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'rgba(255,255,255,0.07)',padding:'3px 10px',borderRadius:99,fontSize:11}}>
+          <div style={{width:7,height:7,borderRadius:'50%',background:['','#00e87a','#f59e0b','#f59e0b','#ef4444','#9b2335'][data.aqi]||'#888'}}/>
+          AQI {data.aqi} · {data.aqiLabel}
+        </div>
+      )}
+      {data.tip && <div style={{fontSize:11,marginTop:8,opacity:0.75,fontStyle:'italic'}}>{data.tip}</div>}
+    </div>
   )
 }
 
@@ -36,7 +54,7 @@ export default function HealthPage({ onQuery, speak, loadingWeather, weatherCard
         )}
 
         {!loadingWeather && weatherCard && (
-          <WeatherCard data={weatherCard} speak={speak} />
+          <WeatherCard data={weatherCard} />
         )}
 
         {!loadingWeather && !weatherCard && (
