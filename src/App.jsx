@@ -146,15 +146,19 @@ export default function App() {
   const { sendMessage, isLoading } = useGroq({ onResponse: handleGroqResponse })
   useEffect(() => { sendMessageRef.current = sendMessage }, [sendMessage])
 
-  // Dedup guard — prevents double-fire from page re-renders during async handling
-  const pendingTranscriptRef = useRef(null)
+  // Stable ref-based wrapper — same function identity forever, no stale closure issues
+  const handleFinalTranscriptRef = useRef(null)
+  const onQuery = useCallback((t) => { handleFinalTranscriptRef.current?.(t) }, [])
+
+  // Module-level dedup set — survives re-renders completely
+  const processingRef = useRef(new Set())
 
   // Main transcript handler
   const handleFinalTranscript = useCallback(async (transcript) => {
     if (!transcript?.trim()) return
-    // Ignore if this exact transcript is already being processed
-    if (pendingTranscriptRef.current === transcript) return
-    pendingTranscriptRef.current = transcript
+    if (processingRef.current.has(transcript)) return
+    processingRef.current.add(transcript)
+    const clearPending = () => processingRef.current.delete(transcript)
 
     const lang = languageRef.current
     if (containsHindi(transcript)) setLanguage('hi-IN')
@@ -174,13 +178,13 @@ export default function App() {
       const reply = "⚠️ This sounds like a medical emergency. Please call 112 immediately or go to the nearest emergency room. Chest pain or difficulty breathing can be life-threatening. Don't wait — call 112 now."
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
       speakRef.current?.('This sounds like a medical emergency. Please call 112 immediately.', lang)
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
     if (isMental) {
       const reply = "I hear you and I'm really concerned. Please call iCall right now at 9152987821. They want to support you. You deserve care. Are you safe right now?"
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
       speakRef.current?.('Please call iCall at 9152987821 right now.', lang)
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
 
     // Breathing
@@ -189,7 +193,7 @@ export default function App() {
       const reply = "I've opened the breathing exercise. The 4-7-8 technique is great for stress — let's do it together."
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
       speakRef.current?.(reply, lang)
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
 
     // Summary
@@ -204,7 +208,7 @@ export default function App() {
         setMessages(prev => [...prev, { role:'assistant', content:fb, time:getTimeString() }])
         speakRef.current?.(fb, lang)
       }
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
 
     // Reminders: list
@@ -215,7 +219,7 @@ export default function App() {
         : `Your reminders: ${rems.map(r=>`${r.medication} at ${r.times.join(' and ')}`).join('. ')}.`
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
       speakRef.current?.(reply, lang)
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
 
     // Reminders: set
@@ -225,7 +229,7 @@ export default function App() {
       const reply = `Done! Reminder set to take ${medication} at ${times.join(' and ')}. I'll notify you on time.`
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
       speakRef.current?.(reply, lang)
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
 
     // Appointment
@@ -234,7 +238,7 @@ export default function App() {
       const text = buildAppointmentText(data)
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, appointmentCard:data, time:getTimeString() }])
       speakRef.current?.(text, lang)
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
 
     // Water
@@ -250,7 +254,7 @@ export default function App() {
         setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, waterCard:data, waterType:'status', time:getTimeString() }])
         speakRef.current?.(text, lang)
       }
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
 
     // Meal plan
@@ -267,7 +271,7 @@ export default function App() {
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:err, time:getTimeString() }])
         speakRef.current?.(err, lang)
       }
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
 
     // Doctor finder
@@ -296,7 +300,7 @@ export default function App() {
             const text = `⚠️ Couldn't get your GPS location, so showing results near ${fallbackCity} instead. ${buildDoctorText(data)}`
             setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
             speakRef.current?.(text, lang)
-            pendingTranscriptRef.current = null; return
+            clearPending(); return
           } catch {
             errMsg = `📡 Location signal is weak and I couldn't find "${fallbackCity}" either. Please check your internet connection and try again, or say "hospitals in Mumbai" to search by city name.`
           }
@@ -306,7 +310,7 @@ export default function App() {
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:errMsg, time:getTimeString() }])
         speakRef.current?.(errMsg, lang)
       }
-      pendingTranscriptRef.current = null; return
+      clearPending(); return
     }
 
     // Drug interaction
@@ -317,7 +321,7 @@ export default function App() {
         const text = buildInteractionText(data)
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, drugCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
-        pendingTranscriptRef.current = null; return
+        clearPending(); return
       }
       setMessages(prev => prev.filter(m=>m.role!=='loading'))
     }
@@ -329,7 +333,7 @@ export default function App() {
         const text = buildBMIText(data)
         setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, bmiCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
-        pendingTranscriptRef.current = null; return
+        clearPending(); return
       }
     }
 
@@ -342,7 +346,7 @@ export default function App() {
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, nutritionCard:data, time:getTimeString() }])
         setApiCallCount(prev => prev + 1)
         speakRef.current?.(text, lang)
-        pendingTranscriptRef.current = null; return
+        clearPending(); return
       }
       setMessages(prev => prev.filter(m=>m.role!=='loading'))
     }
@@ -357,7 +361,7 @@ export default function App() {
         const text = buildWeatherRef.current(data)
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, weatherCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
-        pendingTranscriptRef.current = null; return
+        clearPending(); return
       }
       setMessages(prev => prev.filter(m=>m.role!=='loading'))
     }
@@ -372,13 +376,16 @@ export default function App() {
     }
     const emotionPrompt = EMOTION_META[detectedEmotion]?.prompt || ''
     sendMessageRef.current(transcript, history, emotionPrompt)
-    pendingTranscriptRef.current = null
+    clearPending()
 
   }, [isNutritionQuery, isWeatherQuery, isDrugQuery, isBMIQuery, calculateBMI, buildBMIText,
       checkInteraction, buildInteractionText, showBreathing, isDoctorQuery, findNearbyDoctors,
       buildDoctorText, isAppointmentQuery, bookAppointment, buildAppointmentText,
       isWaterQuery, isLoggingWater, logWater, getStatus, buildWaterText,
       isMealPlanQuery, generateMealPlan, buildMealText])
+
+  // Keep ref in sync so onQuery always calls the latest version
+  useEffect(() => { handleFinalTranscriptRef.current = handleFinalTranscript }, [handleFinalTranscript])
 
   const { isListening, interimText, startListening, stopListening, error } = useSpeech({
     onFinalTranscript: handleFinalTranscript, language,
@@ -401,7 +408,7 @@ export default function App() {
       <Header
         language={language}           onLanguageToggle={() => setLanguage(l=>l==='en-US'?'hi-IN':'en-US')}
         darkMode={darkMode}           onDarkToggle={() => setDarkMode(d=>!d)}
-        onClearChat={handleClearChat} onSummary={() => handleFinalTranscript('Give me a session summary')}
+        onClearChat={handleClearChat} onSummary={() => onQuery('Give me a session summary')}
         emotion={emotion}             emotionLoading={emoLoad}
         reminderCount={reminders.length}
         onRemindersToggle={() => setActivePage('medications')}
@@ -423,18 +430,18 @@ export default function App() {
             inputValue={inputValue} setInputValue={setInputValue}
             onMicClick={() => isListening ? stopListening() : startListening()}
             onStop={stop}
-            onSend={e => { e.preventDefault(); if (!inputValue.trim()) return; handleFinalTranscript(inputValue.trim()); setInputValue('') }}
+            onSend={e => { e.preventDefault(); if (!inputValue.trim()) return; onQuery(inputValue.trim()); setInputValue('') }}
             onCloseSummary={() => setSummary(null)}
             onSpeak={speak} speak={speak} language={language}
             onNavigate={setActivePage} error={error}
-            onQuery={handleFinalTranscript}
+            onQuery={onQuery}
           />
         )}
 
         {/* ── HEALTH PAGE ──────────────────────────────────────────────── */}
         {activePage === 'health' && (
           <HealthPage
-            onQuery={handleFinalTranscript}
+            onQuery={onQuery}
             speak={speak}
           />
         )}
@@ -442,7 +449,7 @@ export default function App() {
         {/* ── NUTRITION PAGE ───────────────────────────────────────────── */}
         {activePage === 'nutrition' && (
           <NutritionPage
-            onQuery={handleFinalTranscript}
+            onQuery={onQuery}
             waterTotal={waterTotal}
             waterPct={waterPct}
             waterLog={waterLog}
@@ -457,13 +464,13 @@ export default function App() {
             isMockMode={isMockMode}
             notifGranted={notifGranted}
             onRemove={removeReminder}
-            onQuery={handleFinalTranscript}
+            onQuery={onQuery}
           />
         )}
 
         {/* ── APPOINTMENTS PAGE ────────────────────────────────────────── */}
         {activePage === 'appointments' && (
-          <AppointmentsPage onQuery={handleFinalTranscript} />
+          <AppointmentsPage onQuery={onQuery} />
         )}
 
         {/* ── DASHBOARD PAGE ───────────────────────────────────────────── */}
