@@ -17,13 +17,6 @@ const CHIPS = [
   { icon:'📅', label:'Appointment',   full:'Book a checkup for tomorrow at 10 AM' },
 ]
 
-const STATS = [
-  { value:'15', label:'Features',  color:'#00e87a' },
-  { value:'9',  label:'Free APIs', color:'#60a5fa' },
-  { value:'<1s',label:'Response',  color:'#a78bfa' },
-  { value:'2',  label:'Languages', color:'#fbbf24' },
-]
-
 const TICKER = [
   'Voice STT + TTS pipeline',
   'Emotion detection via HuggingFace',
@@ -71,6 +64,7 @@ export default function HomePage({
       gap: wide ? 16 : 0,
       overflow:'hidden'
     }}>
+      {/* Conversation column */}
       <div style={{
         flex: wide ? 2 : 1, minWidth:0,
         display:'flex', flexDirection:'column',
@@ -107,6 +101,7 @@ export default function HomePage({
           <div ref={chatEndRef}/>
         </div>
 
+        {/* Sticky input bar */}
         <InputBar
           ref={inputRef} inputValue={inputValue} setInputValue={setInputValue}
           isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}
@@ -114,6 +109,7 @@ export default function HomePage({
         />
       </div>
 
+      {/* Side panel (no stats) */}
       {wide && (
         <aside style={{
           flex:1, minWidth:280, maxWidth:420,
@@ -148,27 +144,12 @@ export default function HomePage({
               ))}
             </div>
           </Card>
-
-          <Card title="At a glance">
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:12 }}>
-              {STATS.map(s => (
-                <div key={s.label}>
-                  <div style={{ fontFamily:'var(--font-display)', fontWeight:800, fontSize:28, color:s.color, lineHeight:1, marginBottom:4 }}>
-                    {s.value}
-                  </div>
-                  <div style={{ fontSize:11, color:'rgba(255,255,255,0.4)', fontFamily:'var(--font-mono)', letterSpacing:'0.02em' }}>
-                    {s.label}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
         </aside>
       )}
     </div>
   )
 
-  /* HERO mode (no stats card) */
+  /* HERO mode (stats already removed) */
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
       <div style={{ flex:1, overflowY:'auto' }}>
@@ -236,7 +217,7 @@ export default function HomePage({
             </div>
           </div>
 
-          {/* Simplified grid: only Quick start + Capabilities */}
+          {/* Simplified grid: Quick start + Capabilities only */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
             <div style={{
               background:'rgba(255,255,255,0.03)',
