@@ -5,7 +5,7 @@ import MicButton from './MicButton.jsx'
 import SessionSummary from './SessionSummary.jsx'
 import BreathingExercise from './BreathingExercise.jsx'
 
-/* ─── constants ─────────────────────────────────────────────── */
+/* ─── constants ─────────────────────────────���───────────────── */
 const CHIPS = [
   { icon:'🤒', label:'Headache',      full:'I have a headache since morning' },
   { icon:'😰', label:'Stress',        full:"I'm feeling very stressed and anxious" },
@@ -76,9 +76,15 @@ export default function HomePage({
               <ContextPill turnCount={turnCount} />
             </div>
           )}
-          {messages.map((m,i) => m.role==='loading'
-            ? <TypingIndicator key={i}/>
-            : <ChatBubble key={i} message={m}/>)}
+          {messages.map((m,i) =>
+            m.role==='loading'
+              ? <TypingIndicator key={i}/>
+              : <ChatBubble
+                  key={i}
+                  message={m}
+                  onSpeak={(text) => speak(text, language)}   // <-- play button uses this
+                />
+          )}
           {loadingSummary && (
             <div style={{ textAlign:'center', padding:'1.5rem', color:'rgba(255,255,255,0.4)', fontSize:13 }}>
               ✨ Generating summary…
@@ -109,7 +115,7 @@ export default function HomePage({
         />
       </div>
 
-      {/* Side panel (no stats) */}
+      {/* Side panel (quick prompts + status) */}
       {wide && (
         <aside style={{
           flex:1, minWidth:280, maxWidth:420,
@@ -149,7 +155,7 @@ export default function HomePage({
     </div>
   )
 
-  /* HERO mode (stats already removed) */
+  /* HERO mode (stats removed) */
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
       <div style={{ flex:1, overflowY:'auto' }}>
