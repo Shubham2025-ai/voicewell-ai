@@ -6,7 +6,7 @@ import AppointmentCard from './AppointmentCard.jsx'
 import WaterCard from './WaterCard.jsx'
 import MealPlanCard from './MealPlanCard.jsx'
 
-export default function ChatBubble({ message, onSpeak }) {
+export default function ChatBubble({ message, onSpeak, onQuery }) {
   const isUser  = message.role === 'user'
   const [copied, setCopied]   = useState(false)
   const [displayed, setDisplayed] = useState(isUser ? message.content : '')
@@ -75,23 +75,27 @@ export default function ChatBubble({ message, onSpeak }) {
         display:'flex', flexDirection:'column',
         alignItems: isUser ? 'flex-end' : 'flex-start', gap:4,
       }}>
-        <div style={{
-          padding: hasCard ? '12px 14px' : '10px 14px',
-          fontSize:13.5, lineHeight:1.65,
-          fontFamily:'var(--font-body)',
-          ...(isUser ? {
-            background:'linear-gradient(135deg,#6366f1,#8b5cf6)',
-            color:'#fff',
-            borderRadius:'16px 16px 4px 16px',
-            boxShadow:'0 3px 12px rgba(99,102,241,0.25)',
-          } : {
-            background:'#111',
-            color:'var(--text-1)',
-            border:'1px solid #1e1e1e',
-            borderRadius:'16px 16px 16px 4px',
-            boxShadow:'0 2px 10px rgba(0,0,0,0.5)',
-          }),
-        }}>
+        <div
+          style={{
+            padding: hasCard ? '12px 14px' : '10px 14px',
+            fontSize:13.5, lineHeight:1.65,
+            fontFamily:'var(--font-body)',
+            ...(isUser ? {
+              background:'linear-gradient(135deg,#6366f1,#8b5cf6)',
+              color:'#fff',
+              borderRadius:'16px 16px 4px 16px',
+              boxShadow:'0 3px 12px rgba(99,102,241,0.25)',
+            } : {
+              background:'#111',
+              color:'var(--text-1)',
+              border:'1px solid #1e1e1e',
+              borderRadius:'16px 16px 16px 4px',
+              boxShadow:'0 2px 10px rgba(0,0,0,0.5)',
+            }),
+          }}
+          aria-live={isUser ? undefined : 'polite'}
+          role={isUser ? 'presentation' : 'status'}
+        >
           {message.nutritionCard   ? <NutritionCard   data={message.nutritionCard} />
           :message.weatherCard    ? <WeatherCard     data={message.weatherCard} />
           :message.drugCard       ? <DrugInteractionCard data={message.drugCard} />
@@ -103,6 +107,35 @@ export default function ChatBubble({ message, onSpeak }) {
           : <span className={typing ? 'cursor' : ''}>{displayed}</span>}
         </div>
 
+        {/* Clarifier options as chips (if provided) */}
+        {!isUser && message.options?.length > 0 && (
+          <div
+            className="options-row"
+            role="group"
+            aria-label="Clarification options"
+            style={{ display:'flex', gap:8, flexWrap:'wrap' }}
+          >
+            {message.options.map(opt => (
+              <button
+                key={opt}
+                onClick={() => onQuery?.(opt)}
+                aria-label={`Select: ${opt}`}
+                style={{
+                  padding:'6px 10px',
+                  borderRadius:12,
+                  border:'1px solid rgba(255,255,255,0.12)',
+                  background:'rgba(255,255,255,0.05)',
+                  color:'rgba(255,255,255,0.85)',
+                  fontSize:12,
+                  cursor:'pointer',
+                }}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Footer */}
         <div style={{
           display:'flex', alignItems:'center', gap:7,
@@ -113,13 +146,13 @@ export default function ChatBubble({ message, onSpeak }) {
           </span>
           {!isUser && !typing && (
             <>
-              <button onClick={play} style={{
+              <button onClick={play} aria-label="Play message audio" style={{
                 fontSize:10, padding:'1px 6px', borderRadius:5,
                 border:'1px solid var(--border)', background:'var(--surface-2)',
                 color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)',
                 transition:'all 0.14s',
               }}>play</button>
-              <button onClick={copy} style={{
+              <button onClick={copy} aria-label="Copy message text" style={{
                 fontSize:10, padding:'1px 6px', borderRadius:5,
                 border:'1px solid var(--border)', background:'var(--surface-2)',
                 color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)',
