@@ -49,52 +49,55 @@ export function useMealPlanner() {
 
     const diet = isVegan ? 'vegan' : isVeg ? 'vegetarian' : 'non-vegetarian'
 
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        max_tokens: 1000,
-        temperature: 0.4,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a professional Indian nutritionist. Generate a 7-day meal plan.
-Return ONLY valid JSON in this exact format, no markdown, no extra text:
-{
-  "goal": "string",
-  "diet": "string",
-  "calories": "string",
-  "days": [
-    {
-      "day": "Monday",
-      "breakfast": {"name": "string", "items": ["item1","item2"], "calories": number},
-      "lunch":     {"name": "string", "items": ["item1","item2"], "calories": number},
-      "snack":     {"name": "string", "items": ["item1"],         "calories": number},
-      "dinner":    {"name": "string", "items": ["item1","item2"], "calories": number}
-    }
-  ]
-}
-Use realistic Indian foods. All 7 days must be included.`
-          },
-          {
-            role: 'user',
-            content: `Generate a 7-day ${diet} Indian meal plan for ${goal}. Original request: "${transcript}"`
-          }
-        ]
+    const callGroq = async (days) => {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          max_tokens: 2000,
+          temperature: 0.3,
+          messages: [
+            {
+              role: 'system',
+              content: `You are an Indian nutritionist. Generate a ${days}-day meal plan.
+CRITICAL: Return ONLY a raw JSON object. No markdown, no backticks, no explanation.
+Exact format:
+{"goal":"string","diet":"string","calories":"string","days":[{"day":"Monday","breakfast":{"name":"string","items":["item1","item2"],"calories":300},"lunch":{"name":"string","items":["item1","item2"],"calories":450},"snack":{"name":"string","items":["item1"],"calories":150},"dinner":{"name":"string","items":["item1","item2"],"calories":400}}]}
+Keep item names SHORT (max 3 words each). Include exactly ${days} days.`
+            },
+            {
+              role: 'user',
+              content: `${days}-day ${diet} Indian meal plan for ${goal}.`
+            }
+          ]
+        })
       })
-    })
+      if (!r.ok) throw new Error(`Groq API ${r.status}`)
+      return await r.json()
+    }
 
-    if (!res.ok) throw new Error(`Groq API ${res.status}`)
-    const data = await res.json()
-    const text = data.choices?.[0]?.message?.content?.trim()
+    // Try 7-day plan first, fall back to 3-day if it fails
+    let plan = null
+    for (const days of [7, 3]) {
+      try {
+        const data = await callGroq(days)
+        const raw  = data.choices?.[0]?.message?.content?.trim()
+        if (!raw) continue
 
-    // Parse JSON
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('Invalid response format')
-    const plan = JSON.parse(jsonMatch[0])
+        // Strip any accidental markdown fences
+        const cleaned = raw.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```$/,'').trim()
 
-    if (!plan.days || plan.days.length === 0) throw new Error('Empty meal plan')
+        // Extract JSON object
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+        if (!jsonMatch) continue
+
+        const parsed = JSON.parse(jsonMatch[0])
+        if (parsed.days?.length > 0) { plan = parsed; break }
+      } catch { continue }
+    }
+
+    if (!plan) throw new Error('Could not generate meal plan')
     return plan
   }, [])
 
