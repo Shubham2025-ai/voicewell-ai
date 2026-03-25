@@ -34,6 +34,39 @@ const WELCOME = {
   time:    getTimeString(),
 }
 
+// Intent keywords and scoring
+const intentKeywords = {
+  doctor: ['doctor','dentist','clinic','hospital','nearby','near me','appointment with doctor','find doctor','physician'],
+  drug: ['drug','interaction','medicine','pill','tablet','ibuprofen','paracetamol','aspirin'],
+  bmi: ['bmi','body mass index','height','weight'],
+  meal: ['meal plan','diet','food plan','calories','breakfast','lunch','dinner'],
+  water: ['water','hydration','drink'],
+  appointment: ['appointment','book','schedule visit','checkup'],
+  reminder: ['remind','reminder','take at'],
+  weather: ['weather','temperature','forecast'],
+}
+function detectIntentScore(text) {
+  const t = text.toLowerCase()
+  let best = { intent: null, score: 0 }
+  Object.entries(intentKeywords).forEach(([intent, words]) => {
+    const hits = words.reduce((c, w) => c + (t.includes(w) ? 1 : 0), 0)
+    if (hits > best.score) best = { intent, score: hits }
+  })
+  const confidence = Math.min(1, best.score / 2) // 0, 0.5, 1 scale
+  return { ...best, confidence }
+}
+
+// Symptom detector to bypass low-confidence clarification for complaints
+const isSymptom = (text) => {
+  const t = text.toLowerCase()
+  const symptomWords = [
+    'headache','migraine','fever','nausea','cough','cold','pain','dizzy','dizziness',
+    'vomit','vomiting','sore throat','rash','fatigue','chills','congestion','stomachache',
+    'cramp','body ache','throat pain','earache','toothache'
+  ]
+  return symptomWords.some(w => t.includes(w))
+}
+
 const isSettingReminder = t => {
   const l = t.toLowerCase()
   const hasIntent = /re?mi[nm]d/.test(l) || l.includes('set a reminder') || l.includes('add reminder') || l.includes('schedule')
@@ -52,28 +85,6 @@ const isAskingReminders = t => {
 const isAskingSummary = t => {
   const l = t.toLowerCase()
   return ['summary','summarize','recap','what did we','session','review'].some(w => l.includes(w))
-}
-
-// ---------- Intent scoring for clarification ----------
-const intentKeywords = {
-  doctor: ['doctor','dentist','clinic','hospital','nearby','near me','appointment with doctor','find doctor','physician'],
-  drug: ['drug','interaction','medicine','pill','tablet','ibuprofen','paracetamol','aspirin'],
-  bmi: ['bmi','body mass index','height','weight'],
-  meal: ['meal plan','diet','food plan','calories','breakfast','lunch','dinner'],
-  water: ['water','hydration','drink'],
-  appointment: ['appointment','book','schedule visit','checkup'],
-  reminder: ['remind','reminder','take at'],
-  weather: ['weather','temperature','forecast'],
-}
-function detectIntentScore(text) {
-  const t = text.toLowerCase()
-  let best = { intent: null, score: 0 }
-  Object.entries(intentKeywords).forEach(([intent, words]) => {
-    const hits = words.reduce((c, w) => c + (t.includes(w) ? 1 : 0), 0)
-    if (hits > best.score) best = { intent, score: hits }
-  })
-  const confidence = Math.min(1, best.score / 2) // 0, 0.5, 1.0 rough scaling
-  return { ...best, confidence }
 }
 
 async function generateSummary(history, apiKey) {
@@ -187,7 +198,6 @@ export default function App() {
     setActivePage('home')
 
     const t = transcript.toLowerCase()
-    // Reset context command
     if (t.includes('reset context') || t.includes('clear context') || t.includes('forget context')) {
       resetContext()
       const reply = "Context cleared. I’ll treat the next request as new."
@@ -220,12 +230,24 @@ export default function App() {
       clearPending(); return
     }
 
-    // Intent confidence gate (before branches)
+    // Intent confidence gate with symptom override
+    const symptomDetected = isSymptom(transcript)
     const { intent: guessedIntent, confidence } = detectIntentScore(transcript)
-    if (!guessedIntent || confidence < 0.5) {
-      const reply = "I heard that, but to be sure: do you want me to find a doctor, check a drug, make a meal plan, or something else?"
-      setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
-      speakRef.current?.(reply, lang)
+    const effectiveConfidence = symptomDetected ? 1 : confidence
+
+    if (!symptomDetected && (!guessedIntent || effectiveConfidence < 0.5)) {
+      const reply = `I heard: “${transcript}”. Want me to: 
+1) find a doctor, 
+2) check a medicine interaction, 
+3) create a meal plan, or 
+4) log/check water?`
+      setMessages(prev => [...prev, userMsg, {
+        role:'assistant',
+        content: reply,
+        time: getTimeString(),
+        options: ['Find a doctor','Check a medicine','Make a meal plan','Log water']
+      }])
+      speakRef.current?.('I want to be sure. Should I find a doctor, check a medicine, make a meal plan, or log water?', lang)
       clearPending(); return
     }
 
