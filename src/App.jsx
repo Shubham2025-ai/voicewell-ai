@@ -39,7 +39,7 @@ const intentKeywords = {
   doctor: ['doctor','dentist','clinic','hospital','nearby','near me','appointment with doctor','find doctor','physician'],
   drug: ['drug','interaction','medicine','pill','tablet','ibuprofen','paracetamol','aspirin'],
   bmi: ['bmi','body mass index','height','weight'],
-  meal: ['meal plan','diet','food plan','calories','breakfast','lunch','dinner'],
+  meal: ['meal plan','diet','food plan','calories','breakfast','lunch','dinner','menu','meals','vegetarian','veg'],
   water: ['water','hydration','drink'],
   appointment: ['appointment','book','schedule visit','checkup'],
   reminder: ['remind','reminder','take at'],
@@ -250,10 +250,11 @@ export default function App() {
       clearPending(); return
     }
 
-    // Intent confidence gate with symptom override
+    // Intent confidence gate with symptom + meal-plan override
     const symptomDetected = isSymptom(transcript)
+    const mealPlanDetected = isMealPlanQuery(transcript)
     const { intent: guessedIntent, confidence } = detectIntentScore(transcript)
-    const effectiveConfidence = symptomDetected ? 1 : confidence
+    const effectiveConfidence = (symptomDetected || mealPlanDetected) ? 1 : confidence
 
     // Gate doctor intent: only if user clearly asks to find/search/book/near
     const doctorQueryAllowed =
@@ -261,7 +262,7 @@ export default function App() {
       /(find|near|nearby|search|locate|hospital|clinic|appointment|book)/i.test(t) &&
       !symptomDetected
 
-    if (!symptomDetected && (!guessedIntent || effectiveConfidence < 0.5)) {
+    if (!symptomDetected && !mealPlanDetected && (!guessedIntent || effectiveConfidence < 0.5)) {
       const reply = `I heard: “${transcript}”. Want me to: 
 1) find a doctor, 
 2) check a medicine interaction, 
