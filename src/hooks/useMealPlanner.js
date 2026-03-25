@@ -5,18 +5,29 @@ import { useCallback } from 'react'
  * Detects dietary preferences from voice and generates a structured plan.
  */
 
-const MEAL_KEYWORDS = [
-  'meal plan', 'meal planner', 'diet plan', 'weekly diet',
-  'what should i eat', 'plan my meals', 'plan my diet',
-  'weekly meal', '7 day', 'seven day', 'food plan',
-  'diet chart', 'खाना', 'डाइट',
-]
-
 export function useMealPlanner() {
 
   const isMealPlanQuery = useCallback((text) => {
     const t = text.toLowerCase()
-    return MEAL_KEYWORDS.some(k => t.includes(k))
+
+    // Direct keyword matches
+    const direct = [
+      'meal plan','meal planner','diet plan','weekly diet','weekly meal',
+      '7 day','seven day','food plan','diet chart','what should i eat',
+      'plan my meals','plan my diet','खाना','डाइट',
+    ]
+    if (direct.some(k => t.includes(k))) return true
+
+    // Flexible: plan/suggest/create + meal/food/diet/eat/menu
+    const planWords = ['plan','suggest','create','make','give','prepare','design','help me with']
+    const foodWords = ['meal','meals','food','diet','eating','eat','menu','nutrition']
+    if (planWords.some(w => t.includes(w)) && foodWords.some(w => t.includes(w))) return true
+
+    // week + food
+    const weekWords = ['week','weekly','daily','everyday','each day','per day']
+    if (weekWords.some(w => t.includes(w)) && foodWords.some(w => t.includes(w))) return true
+
+    return false
   }, [])
 
   const generateMealPlan = useCallback(async (transcript, apiKey) => {
