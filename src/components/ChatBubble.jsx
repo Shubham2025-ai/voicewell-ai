@@ -6,7 +6,7 @@ import AppointmentCard from './AppointmentCard.jsx'
 import WaterCard from './WaterCard.jsx'
 import MealPlanCard from './MealPlanCard.jsx'
 
-export default function ChatBubble({ message }) {
+export default function ChatBubble({ message, onSpeak }) {
   const isUser  = message.role === 'user'
   const [copied, setCopied]   = useState(false)
   const [displayed, setDisplayed] = useState(isUser ? message.content : '')
@@ -36,6 +36,10 @@ export default function ChatBubble({ message }) {
     navigator.clipboard.writeText(message.content).then(() => {
       setCopied(true); setTimeout(() => setCopied(false), 2000)
     })
+  }
+
+  const play = () => {
+    if (typeof onSpeak === 'function') onSpeak(message.content)
   }
 
   const hasCard = message.nutritionCard || message.weatherCard || message.drugCard ||
@@ -108,14 +112,22 @@ export default function ChatBubble({ message }) {
             {message.time}
           </span>
           {!isUser && !typing && (
-            <button onClick={copy} style={{
-              fontSize:10, padding:'1px 6px', borderRadius:5,
-              border:'1px solid var(--border)', background:'var(--surface-2)',
-              color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)',
-              transition:'all 0.14s',
-            }}>
-              {copied ? '✓' : 'copy'}
-            </button>
+            <>
+              <button onClick={play} style={{
+                fontSize:10, padding:'1px 6px', borderRadius:5,
+                border:'1px solid var(--border)', background:'var(--surface-2)',
+                color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)',
+                transition:'all 0.14s',
+              }}>play</button>
+              <button onClick={copy} style={{
+                fontSize:10, padding:'1px 6px', borderRadius:5,
+                border:'1px solid var(--border)', background:'var(--surface-2)',
+                color:'var(--text-3)', cursor:'pointer', fontFamily:'var(--font-body)',
+                transition:'all 0.14s',
+              }}>
+                {copied ? '✓' : 'copy'}
+              </button>
+            </>
           )}
           {!isUser && message.latency && (
             <span className="lbadge" style={{
