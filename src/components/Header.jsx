@@ -2,12 +2,12 @@ import React, { useState } from 'react'
 import EmotionBadge from './EmotionBadge.jsx'
 
 export const PAGES = [
-  { id:'home',         icon:'🎙️', label:'Voice'    },
-  { id:'health',       icon:'🩺',  label:'Health'   },
-  { id:'nutrition',    icon:'🍽️', label:'Nutrition' },
-  { id:'medications',  icon:'💊',  label:'Meds'     },
-  { id:'appointments', icon:'📅',  label:'Appts'    },
-  { id:'dashboard',    icon:'📊',  label:'Stats'    },
+  { id:'home',         icon:'🎙️', label:'Voice'     },
+  { id:'health',       icon:'🩺',  label:'Health'    },
+  { id:'nutrition',    icon:'🍽️', label:'Nutrition'  },
+  { id:'medications',  icon:'💊',  label:'Meds'      },
+  { id:'appointments', icon:'📅',  label:'Appts'     },
+  { id:'dashboard',    icon:'📊',  label:'Stats'     },
 ]
 
 export default function Header({
@@ -23,166 +23,211 @@ export default function Header({
   return (
     <>
       <header style={{
-        height: 52,
-        background: '#000',
-        borderBottom: '1px solid #1c1c1c',
+        height: 58,
+        background: 'rgba(4,4,4,0.97)',
+        backdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
         display: 'flex', alignItems: 'center',
-        padding: '0 16px', gap: 0,
+        padding: '0 20px', gap: 0,
         flexShrink: 0, position: 'relative', zIndex: 100,
+        boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)',
       }}>
 
-        {/* ── Logo ──────────────────────────────────────── */}
-        <div style={{ display:'flex', alignItems:'center', gap:9, flexShrink:0, minWidth:140 }}>
+        {/* ── Logo ── */}
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0, minWidth:150 }}>
           <div style={{
-            width:30, height:30, borderRadius:8, flexShrink:0,
+            width:32, height:32, borderRadius:9, flexShrink:0,
             background:'linear-gradient(135deg,#00e87a,#00b85e)',
             display:'flex', alignItems:'center', justifyContent:'center',
-            fontSize:15, boxShadow:'0 0 10px rgba(0,232,122,0.25)',
+            fontSize:16, boxShadow:'0 0 16px rgba(0,232,122,0.3), 0 2px 8px rgba(0,0,0,0.4)',
           }}>🎙️</div>
           <div>
             <div style={{
               fontFamily:'var(--font-display)', fontWeight:800,
-              fontSize:13.5, color:'#fff', letterSpacing:'-0.4px', lineHeight:1.1,
+              fontSize:14, color:'#fff', letterSpacing:'-0.5px', lineHeight:1.1,
             }}>VoiceWell AI</div>
-            <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:1 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:2 }}>
               <div style={{
                 width:5, height:5, borderRadius:'50%',
-                background: isConnected ? '#00e87a' : '#333',
-                boxShadow: isConnected ? '0 0 5px #00e87a' : 'none',
+                background: isConnected ? '#00e87a' : '#444',
+                boxShadow: isConnected ? '0 0 6px #00e87a' : 'none',
+                transition: 'all 0.3s',
               }}/>
-              <span style={{ fontSize:9, color:'#333', fontFamily:'var(--font-mono)' }}>
+              <span style={{ fontSize:9, color: isConnected ? '#2a6644' : '#333', fontFamily:'var(--font-mono)', letterSpacing:'0.04em' }}>
                 {isConnected ? 'live' : 'offline'}
               </span>
             </div>
           </div>
         </div>
 
-        {/* ── Center pill nav — desktop ──────────────────── */}
+        {/* ── Center nav ── */}
         <nav style={{
           position:'absolute', left:'50%', transform:'translateX(-50%)',
           display:'flex', alignItems:'center', gap:1,
-          background:'#0f0f0f',
-          border:'1px solid #1e1e1e',
-          borderRadius:10, padding:'3px',
-        }} className="hidden md:flex">
+          background:'rgba(255,255,255,0.04)',
+          border:'1px solid rgba(255,255,255,0.08)',
+          borderRadius:12, padding:'4px',
+        }}>
           {PAGES.map(p => {
             const active = activePage === p.id
             return (
               <button key={p.id} onClick={() => onNavigate(p.id)} style={{
                 display:'flex', alignItems:'center', gap:5,
-                padding:'5px 12px', borderRadius:7,
-                border:'none', cursor:'pointer', fontSize:11,
+                padding:'5px 13px', borderRadius:8,
+                border:'none', cursor:'pointer', fontSize:11.5,
                 fontFamily:'var(--font-body)', fontWeight: active ? 700 : 400,
-                transition:'all 0.14s', position:'relative',
-                background: active ? 'linear-gradient(135deg,#00e87a,#00c264)' : 'transparent',
-                color: active ? '#000' : '#505050',
-                boxShadow: active ? '0 2px 10px rgba(0,232,122,0.25)' : 'none',
+                transition:'all 0.15s', position:'relative',
+                background: active
+                  ? 'linear-gradient(135deg,#00e87a,#00c264)'
+                  : 'transparent',
+                color: active ? '#000' : 'rgba(255,255,255,0.35)',
+                boxShadow: active ? '0 2px 12px rgba(0,232,122,0.3)' : 'none',
+                transform: active ? 'scale(1)' : 'scale(0.97)',
               }}
-              onMouseEnter={e => { if (!active) e.currentTarget.style.color='#aaa' }}
-              onMouseLeave={e => { if (!active) e.currentTarget.style.color='#505050' }}
+              onMouseEnter={e => { if (!active) { e.currentTarget.style.color='rgba(255,255,255,0.75)'; e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.transform='scale(1)' }}}
+              onMouseLeave={e => { if (!active) { e.currentTarget.style.color='rgba(255,255,255,0.35)'; e.currentTarget.style.background='transparent'; e.currentTarget.style.transform='scale(0.97)' }}}
               >
-                <span style={{ fontSize:12 }}>{p.icon}</span>
-                {p.label}
-                {p.id==='medications' && reminderCount>0 && (
+                <span style={{ fontSize:13 }}>{p.icon}</span>
+                <span>{p.label}</span>
+                {p.id==='medications' && reminderCount > 0 && (
                   <span style={{
-                    position:'absolute', top:-4, right:-4,
-                    width:14, height:14, borderRadius:'50%',
+                    position:'absolute', top:-5, right:-4,
+                    minWidth:15, height:15, borderRadius:99,
+                    padding:'0 3px',
                     background:'#ff3d5a', color:'#fff',
-                    fontSize:8, fontWeight:700,
+                    fontSize:8, fontWeight:800,
                     display:'flex', alignItems:'center', justifyContent:'center',
-                    border:'1.5px solid #000',
-                  }}>{reminderCount>9?'9+':reminderCount}</span>
+                    border:'2px solid rgba(4,4,4,0.97)',
+                    boxShadow:'0 0 6px rgba(255,61,90,0.5)',
+                    fontFamily:'var(--font-mono)',
+                  }}>{reminderCount > 9 ? '9+' : reminderCount}</span>
                 )}
               </button>
             )
           })}
         </nav>
 
-        {/* ── Right controls ─────────────────────────────── */}
-        <div style={{ display:'flex', alignItems:'center', gap:5, marginLeft:'auto', flexShrink:0 }}>
+        {/* ── Right controls ── */}
+        <div style={{ display:'flex', alignItems:'center', gap:4, marginLeft:'auto', flexShrink:0 }}>
 
-          {emotion && <div className="hidden lg:block"><EmotionBadge emotion={emotion} loading={emotionLoading} /></div>}
+          {emotion && (
+            <div style={{ marginRight:2 }}>
+              <EmotionBadge emotion={emotion} loading={emotionLoading} />
+            </div>
+          )}
 
-          <div style={{
-            display:'flex', alignItems:'center', gap:3,
-            padding:'3px 9px', borderRadius:99,
-            background:'#0a0a0a', border:'1px solid #1a1a1a',
-            fontSize:9, color:'#2a2a2a', fontFamily:'var(--font-mono)',
-          }} className="hidden xl:flex">
-            <span>ⓘ</span><span>Not medical advice</span>
-          </div>
+          {/* Divider */}
+          <div style={{ width:1, height:16, background:'rgba(255,255,255,0.07)', margin:'0 2px' }} />
 
-          <div style={{ width:1, height:14, background:'#1c1c1c', margin:'0 2px' }} />
+          {/* Summary */}
+          <HBtn onClick={onSummary}   icon="📋" tip="Session summary" />
+          {/* Clear */}
+          <HBtn onClick={onClearChat} icon="🗑️" tip="Clear chat" />
 
-          <HBtn onClick={onSummary}        tip="Session summary"   icon="📋" />
-          <HBtn onClick={onClearChat}      tip="Clear chat"        icon="🗑️" />
+          {/* Divider */}
+          <div style={{ width:1, height:16, background:'rgba(255,255,255,0.07)', margin:'0 2px' }} />
 
+          {/* Language toggle */}
           <button onClick={onLanguageToggle} style={{
-            display:'flex', alignItems:'center', gap:4,
-            padding:'4px 9px', borderRadius:7,
-            border:'1px solid #1c1c1c', background:'#0a0a0a',
-            cursor:'pointer', fontSize:11, color:'#555',
-            fontFamily:'var(--font-body)', transition:'all 0.14s',
+            display:'flex', alignItems:'center', gap:5,
+            padding:'5px 10px', borderRadius:8,
+            border:'1px solid rgba(255,255,255,0.08)',
+            background:'rgba(255,255,255,0.04)',
+            cursor:'pointer', fontSize:11, color:'rgba(255,255,255,0.45)',
+            fontFamily:'var(--font-mono)', fontWeight:600, letterSpacing:'0.03em',
+            transition:'all 0.15s',
           }}
-          onMouseEnter={e=>{e.currentTarget.style.borderColor='#333';e.currentTarget.style.color='#bbb'}}
-          onMouseLeave={e=>{e.currentTarget.style.borderColor='#1c1c1c';e.currentTarget.style.color='#555'}}
+          onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';e.currentTarget.style.color='rgba(255,255,255,0.8)';e.currentTarget.style.background='rgba(255,255,255,0.08)'}}
+          onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(255,255,255,0.08)';e.currentTarget.style.color='rgba(255,255,255,0.45)';e.currentTarget.style.background='rgba(255,255,255,0.04)'}}
           >
-            <span style={{fontSize:13}}>{language==='en-US'?'🇬🇧':'🇮🇳'}</span>
+            <span style={{fontSize:14}}>{language==='en-US'?'🇬🇧':'🇮🇳'}</span>
             <span>{language==='en-US'?'EN':'हिं'}</span>
           </button>
 
-          <HBtn onClick={onDarkToggle} tip={darkMode?'Light mode':'Dark mode'} icon={darkMode?'☀️':'🌙'} />
+          {/* Dark mode */}
+          <HBtn onClick={onDarkToggle} icon={darkMode ? '☀️' : '🌙'} tip={darkMode ? 'Light mode' : 'Dark mode'} />
 
           {/* Mobile hamburger */}
-          <button className="md:hidden" onClick={()=>setMobileOpen(o=>!o)} style={{
-            width:30, height:30, borderRadius:7,
-            border:'1px solid #1c1c1c', background:'#0a0a0a',
-            cursor:'pointer', color:'#555', fontSize:15,
-            display:'flex', alignItems:'center', justifyContent:'center',
-          }}>☰</button>
+          <button
+            onClick={() => setMobileOpen(o => !o)}
+            style={{
+              display:'none',
+              width:32, height:32, borderRadius:8,
+              border:'1px solid rgba(255,255,255,0.08)',
+              background: mobileOpen ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+              cursor:'pointer', color:'rgba(255,255,255,0.55)', fontSize:15,
+              alignItems:'center', justifyContent:'center',
+              transition:'all 0.15s',
+            }}
+            className="hamburger-btn"
+          >{mobileOpen ? '✕' : '☰'}</button>
         </div>
       </header>
 
-      {/* ── Mobile dropdown ─────────────────────────────── */}
+      {/* ── Mobile nav dropdown ── */}
       {mobileOpen && (
-        <div className="md:hidden" style={{
-          background:'#050505', borderBottom:'1px solid #1a1a1a',
-          padding:10, display:'flex', flexWrap:'wrap', gap:6, zIndex:99,
-          position:'relative',
+        <div style={{
+          background:'rgba(6,6,6,0.98)',
+          backdropFilter:'blur(20px)',
+          borderBottom:'1px solid rgba(255,255,255,0.07)',
+          padding:'10px 16px 14px',
+          display:'flex', flexWrap:'wrap', gap:6,
+          zIndex:99, position:'relative',
+          boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
         }}>
           {PAGES.map(p => {
-            const active = activePage===p.id
+            const active = activePage === p.id
             return (
-              <button key={p.id} onClick={()=>{onNavigate(p.id);setMobileOpen(false)}} style={{
-                display:'flex', alignItems:'center', gap:6,
-                padding:'7px 14px', borderRadius:8,
-                border: active ? '1px solid #00e87a' : '1px solid #1c1c1c',
-                background: active ? 'rgba(0,232,122,0.08)' : '#0f0f0f',
-                cursor:'pointer', fontSize:12, fontWeight: active ? 700 : 400,
-                color: active ? '#00e87a' : '#555',
-                fontFamily:'var(--font-body)',
-              }}>
-                {p.icon} {p.label}
-              </button>
+              <button key={p.id}
+                onClick={() => { onNavigate(p.id); setMobileOpen(false) }}
+                style={{
+                  display:'flex', alignItems:'center', gap:7,
+                  padding:'8px 16px', borderRadius:9,
+                  border: active ? '1px solid rgba(0,232,122,0.35)' : '1px solid rgba(255,255,255,0.07)',
+                  background: active ? 'rgba(0,232,122,0.1)' : 'rgba(255,255,255,0.03)',
+                  cursor:'pointer', fontSize:12.5, fontWeight: active ? 700 : 400,
+                  color: active ? '#00e87a' : 'rgba(255,255,255,0.5)',
+                  fontFamily:'var(--font-body)', transition:'all 0.14s',
+                  boxShadow: active ? '0 0 12px rgba(0,232,122,0.15)' : 'none',
+                }}
+              >{p.icon} {p.label}</button>
             )
           })}
         </div>
       )}
+
+      <style>{`
+        @media (max-width: 768px) {
+          header nav { display: none !important; }
+          .hamburger-btn { display: flex !important; }
+        }
+        @media (max-width: 1024px) {
+          header nav button span:last-of-type { display: none; }
+          header nav button { padding: 6px 10px !important; }
+        }
+      `}</style>
     </>
   )
 }
 
 function HBtn({ onClick, tip, icon }) {
+  const [hovered, setHovered] = useState(false)
   return (
-    <button onClick={onClick} data-tip={tip} style={{
-      width:30, height:30, borderRadius:7,
-      border:'1px solid #1c1c1c', background:'#0a0a0a',
-      cursor:'pointer', fontSize:14, color:'#444',
-      display:'flex', alignItems:'center', justifyContent:'center',
-      transition:'all 0.14s',
-    }}
-    onMouseEnter={e=>{e.currentTarget.style.borderColor='#333';e.currentTarget.style.color='#aaa'}}
-    onMouseLeave={e=>{e.currentTarget.style.borderColor='#1c1c1c';e.currentTarget.style.color='#444'}}
+    <button
+      onClick={onClick}
+      title={tip}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width:32, height:32, borderRadius:8,
+        border:`1px solid ${hovered ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)'}`,
+        background: hovered ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
+        cursor:'pointer', fontSize:14,
+        color: hovered ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.4)',
+        display:'flex', alignItems:'center', justifyContent:'center',
+        transition:'all 0.15s',
+        transform: hovered ? 'scale(1.05)' : 'scale(1)',
+      }}
     >{icon}</button>
   )
 }
