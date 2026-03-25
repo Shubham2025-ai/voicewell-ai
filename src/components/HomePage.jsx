@@ -36,6 +36,7 @@ export default function HomePage({
   setShowBreathing,
   contextState,
   onResetContext,
+  lastEmotion,
 }) {
   const chatEndRef = useRef(null)
   const inputRef   = useRef(null)
@@ -66,6 +67,20 @@ export default function HomePage({
     return parts.join(' · ')
   })()
 
+  const emotionLabel = (() => {
+    if (!lastEmotion) return null
+    const map = {
+      stressed: { text:'Stressed', color:'#f97316' },
+      sad:      { text:'Sad',      color:'#60a5fa' },
+      angry:    { text:'Tense',    color:'#f43f5e' },
+      anxious:  { text:'Anxious',  color:'#c084fc' },
+      worried:  { text:'Worried',  color:'#f59e0b' },
+      happy:    { text:'Upbeat',   color:'#22c55e' },
+      neutral:  { text:'Calm',     color:'#a3a3a3' },
+    }
+    return map[lastEmotion] || { text:lastEmotion, color:'#a3a3a3' }
+  })()
+
   /* CHAT mode */
   if (hasMessages) return (
     <div style={{
@@ -80,10 +95,17 @@ export default function HomePage({
         borderRight: wide ? '1px solid rgba(255,255,255,0.06)' : 'none'
       }}>
         <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 1.25rem' }}>
-          {turnCount > 0 && (
+          {(turnCount > 0 || emotionLabel) && (
             <div style={{ display:'flex', justifyContent:'center', marginBottom:10, gap:8, flexWrap:'wrap' }}>
               <ContextPill turnCount={turnCount} />
               {contextText && <ContextStatePill text={contextText} />}
+              {emotionLabel && (
+                <EmotionPill
+                  text={emotionLabel.text}
+                  color={emotionLabel.color}
+                  onBreathe={() => setShowBreathing(true)}
+                />
+              )}
             </div>
           )}
           {messages.map((m,i) =>
@@ -378,6 +400,31 @@ export default function HomePage({
 }
 
 /* ─── helpers & styles ─────────────────────────────────────────── */
+function EmotionPill({ text, color, onBreathe }) {
+  return (
+    <div style={{
+      display:'inline-flex', alignItems:'center', gap:8,
+      padding:'6px 10px', borderRadius:12,
+      background:'rgba(255,255,255,0.05)',
+      border:`1px solid ${color}33`,
+      color: color, fontSize:11, fontFamily:'var(--font-mono)'
+    }}>
+      <span style={{ width:7, height:7, borderRadius:'50%', background:color, boxShadow:`0 0 10px ${color}55` }} />
+      {text}
+      <button
+        onClick={onBreathe}
+        style={{
+          marginLeft:6, padding:'4px 8px', borderRadius:10,
+          border:`1px solid ${color}33`,
+          background:'rgba(255,255,255,0.04)',
+          color:'rgba(255,255,255,0.85)',
+          fontSize:11, cursor:'pointer'
+        }}
+      >Breathing</button>
+    </div>
+  )
+}
+
 function ContextStatePill({ text }) {
   return (
     <div style={{

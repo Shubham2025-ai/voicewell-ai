@@ -120,6 +120,7 @@ export default function App() {
   const [apiCallCount,   setApiCallCount]   = useState(0)
   const [showBreathing,  setShowBreathing]  = useState(false)
   const [contextState,   setContextState]   = useState({ location:null, doctor:null, diet:null, med:null, lastIntent:null })
+  const [lastEmotion,    setLastEmotion]    = useState(null)
 
   const chatEndRef = useRef(null)
   const startTime  = useRef(null)
@@ -167,12 +168,16 @@ export default function App() {
 
   const handleGroqResponse = useCallback((agentText) => {
     const latency = startTime.current ? Math.round(performance.now() - startTime.current) : null
-    setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:agentText, time:getTimeString(), latency }])
+    let finalText = agentText
+    if (lastEmotion && ['stressed','sad','angry','anxious','worried'].includes(lastEmotion)) {
+      finalText = `I'm here with you. ${agentText}`
+    }
+    setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:finalText, time:getTimeString(), latency }])
     setIsConnected(true)
     if (latency) setLatencies(prev => [...prev.slice(-9), latency])
     setApiCallCount(prev => prev + 1)
-    speakRef.current?.(agentText, containsHindi(agentText) ? 'hi-IN' : languageRef.current)
-  }, [])
+    speakRef.current?.(finalText, containsHindi(finalText) ? 'hi-IN' : languageRef.current)
+  }, [lastEmotion])
 
   const { sendMessage, isLoading } = useGroq({ onResponse: handleGroqResponse })
   useEffect(() => { sendMessageRef.current = sendMessage }, [sendMessage])
@@ -424,6 +429,7 @@ export default function App() {
     const history = messagesRef.current.filter(m=>m.role!=='loading').map(m=>({ role:m.role==='assistant'?'assistant':'user', content:m.content }))
     const detectedEmotion = await detectEmotionRef.current(transcript)
     if (detectedEmotion) {
+      setLastEmotion(detectedEmotion)
       setMoodHistory(prev => [...prev.slice(-19), detectedEmotion])
       if (detectedEmotion === 'stressed' && !showBreathing) setShowBreathing(true)
     }
@@ -444,7 +450,7 @@ export default function App() {
   })
 
   const handleClearChat = () => {
-    stop(); setSummary(null); setMoodHistory([]); resetContext()
+    stop(); setSummary(null); setMoodHistory([]); resetContext(); setLastEmotion(null)
     setMessages([{ ...WELCOME, time:getTimeString(), content:"Chat cleared! How can I help you?" }])
   }
 
@@ -486,6 +492,7 @@ export default function App() {
             onQuery={onQuery}
             contextState={contextState}
             onResetContext={resetContext}
+            lastEmotion={lastEmotion}
           />
         )}
 
