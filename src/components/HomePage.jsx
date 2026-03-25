@@ -5,7 +5,6 @@ import MicButton from './MicButton.jsx'
 import SessionSummary from './SessionSummary.jsx'
 import BreathingExercise from './BreathingExercise.jsx'
 
-/* ─── constants ─────────────────────────────────────────────── */
 const CHIPS = [
   { icon:'🤒', label:'Headache',      full:'I have a headache since morning' },
   { icon:'😰', label:'Stress',        full:"I'm feeling very stressed and anxious" },
@@ -27,7 +26,6 @@ const TICKER = [
   'Google Calendar booking',
 ]
 
-/* ─── main component ─────────────────────────────────────────── */
 export default function HomePage({
   messages, isListening, isSpeaking, isLoading,
   interimText, turnCount, summary, loadingSummary,
@@ -36,6 +34,8 @@ export default function HomePage({
   onCloseSummary, speak, language, error,
   showBreathing, onNavigate, onQuery,
   setShowBreathing,
+  contextState,
+  onResetContext,
 }) {
   const chatEndRef = useRef(null)
   const inputRef   = useRef(null)
@@ -56,6 +56,16 @@ export default function HomePage({
     return () => clearInterval(t)
   }, [])
 
+  const contextText = (() => {
+    const parts = []
+    if (contextState?.lastIntent) parts.push(`last=${contextState.lastIntent}`)
+    if (contextState?.location)   parts.push(`loc=${contextState.location}`)
+    if (contextState?.doctor)     parts.push(`doc=${contextState.doctor}`)
+    if (contextState?.diet)       parts.push(`diet=${contextState.diet}`)
+    if (contextState?.med)        parts.push(`med=${contextState.med}`)
+    return parts.join(' · ')
+  })()
+
   /* CHAT mode */
   if (hasMessages) return (
     <div style={{
@@ -64,7 +74,6 @@ export default function HomePage({
       gap: wide ? 16 : 0,
       overflow:'hidden'
     }}>
-      {/* Conversation column */}
       <div style={{
         flex: wide ? 2 : 1, minWidth:0,
         display:'flex', flexDirection:'column',
@@ -72,8 +81,9 @@ export default function HomePage({
       }}>
         <div style={{ flex:1, overflowY:'auto', padding:'1.5rem 1.25rem' }}>
           {turnCount > 0 && (
-            <div style={{ display:'flex', justifyContent:'center', marginBottom:16 }}>
+            <div style={{ display:'flex', justifyContent:'center', marginBottom:10, gap:8, flexWrap:'wrap' }}>
               <ContextPill turnCount={turnCount} />
+              {contextText && <ContextStatePill text={contextText} />}
             </div>
           )}
           {messages.map((m,i) =>
@@ -82,7 +92,7 @@ export default function HomePage({
               : <ChatBubble
                   key={i}
                   message={m}
-                  onSpeak={(text) => speak(text, language)}   // play button uses this
+                  onSpeak={(text) => speak(text, language)}
                 />
           )}
           {loadingSummary && (
@@ -107,7 +117,6 @@ export default function HomePage({
           <div ref={chatEndRef}/>
         </div>
 
-        {/* Sticky input bar */}
         <InputBar
           ref={inputRef} inputValue={inputValue} setInputValue={setInputValue}
           isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}
@@ -115,7 +124,6 @@ export default function HomePage({
         />
       </div>
 
-      {/* Side panel (quick prompts + status) */}
       {wide && (
         <aside style={{
           flex:1, minWidth:280, maxWidth:420,
@@ -127,6 +135,20 @@ export default function HomePage({
             <ContextPill turnCount={turnCount}/>
             <StatusBadge isListening={isListening} isSpeaking={isSpeaking} isLoading={isLoading}/>
           </div>
+
+          {contextText && (
+            <Card title="Context">
+              <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', fontSize:12, color:'rgba(255,255,255,0.75)' }}>
+                {contextText}
+              </div>
+              <button onClick={onResetContext} style={{
+                marginTop:8, fontSize:11, padding:'6px 10px', borderRadius:8,
+                border:'1px solid rgba(255,255,255,0.12)',
+                background:'rgba(255,255,255,0.04)', color:'rgba(255,255,255,0.8)',
+                cursor:'pointer'
+              }}>Reset context</button>
+            </Card>
+          )}
 
           {showBreathing && (
             <BreathingExercise
@@ -223,7 +245,6 @@ export default function HomePage({
             </div>
           </div>
 
-          {/* Simplified grid: Quick start + Capabilities only */}
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12 }}>
             <div style={{
               background:'rgba(255,255,255,0.03)',
@@ -357,6 +378,21 @@ export default function HomePage({
 }
 
 /* ─── helpers & styles ─────────────────────────────────────────── */
+function ContextStatePill({ text }) {
+  return (
+    <div style={{
+      display:'inline-flex', alignItems:'center', gap:6,
+      padding:'6px 12px', borderRadius:12,
+      background:'rgba(255,255,255,0.05)',
+      border:'1px solid rgba(255,255,255,0.1)',
+      color:'rgba(255,255,255,0.75)',
+      fontSize:11, fontFamily:'var(--font-mono)'
+    }}>
+      🧭 Context · {text}
+    </div>
+  )
+}
+
 function StatusBadge({ isListening, isSpeaking, isLoading }) {
   let label = 'Idle', color = 'rgba(255,255,255,0.35)'
   if (isListening) { label = 'Listening…'; color = '#22d3ee' }
@@ -402,7 +438,6 @@ const quickButtonStyle = {
   transition:'all 0.14s', width:'100%'
 }
 
-/* ─── InputBar ───────────────────────────────────────────────── */
 const InputBar = React.forwardRef(function InputBar(
   { inputValue, setInputValue, isListening, isSpeaking, isLoading, onMicClick, onStop, onSend, error, showWave },
   ref
@@ -451,7 +486,7 @@ const InputBar = React.forwardRef(function InputBar(
           </form>
           <div style={{ display:'flex', justifyContent:'space-between', marginTop:5, padding:'0 4px' }}>
             <span style={{ fontSize:10, color:'rgba(255,255,255,0.15)', fontFamily:'var(--font-mono)' }}>
-              Chrome only · No audio stored �� Voice stays local
+              Chrome only · No audio stored · Voice stays local
             </span>
             {isLoading && <span style={{ fontSize:10, color:'#00e87a', fontFamily:'var(--font-mono)' }}>● thinking…</span>}
           </div>

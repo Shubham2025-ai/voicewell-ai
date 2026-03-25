@@ -5,8 +5,6 @@ import Header          from './components/Header.jsx'
 import HomePage        from './components/HomePage.jsx'
 import ChromeWarning   from './components/ChromeWarning.jsx'
 
-// Voice page components
-
 // Feature pages
 import HealthPage      from './components/HealthPage.jsx'
 import NutritionPage   from './components/NutritionPage.jsx'
@@ -38,19 +36,15 @@ const WELCOME = {
 
 const isSettingReminder = t => {
   const l = t.toLowerCase()
-  // Allow common typos: remaind, remined, remimd
   const hasIntent = /re?mi[nm]d/.test(l) || l.includes('set a reminder') || l.includes('add reminder') || l.includes('schedule')
-  // Must mention taking something OR a medicine name
   const hasTake = l.includes('take') || l.includes('tablet') || l.includes('medicine') || l.includes('pill') ||
                   l.includes('drug') || l.includes('vitamin') || l.includes('capsule') || l.includes('dose') ||
                   l.includes('aspirin') || l.includes('paracetamol') || l.includes('ibuprofen') || l.includes('insulin')
-  // Must have a time reference
   const hasTime = /\d/.test(l) || ['morning','afternoon','evening','night','noon','am','pm','daily','everyday','tonight','today'].some(w => l.includes(w))
   return hasIntent && (hasTake || hasTime)
 }
 const isAskingReminders = t => {
   const l = t.toLowerCase()
-  // Only asking — must have question/list words, must NOT be setting
   if (isSettingReminder(t)) return false
   return ['medication','reminder','medicine','tablet','pill','schedule'].some(w => l.includes(w)) &&
          ['what','list','show','have','my','all'].some(w => l.includes(w))
@@ -58,6 +52,28 @@ const isAskingReminders = t => {
 const isAskingSummary = t => {
   const l = t.toLowerCase()
   return ['summary','summarize','recap','what did we','session','review'].some(w => l.includes(w))
+}
+
+// ---------- Intent scoring for clarification ----------
+const intentKeywords = {
+  doctor: ['doctor','dentist','clinic','hospital','nearby','near me','appointment with doctor','find doctor','physician'],
+  drug: ['drug','interaction','medicine','pill','tablet','ibuprofen','paracetamol','aspirin'],
+  bmi: ['bmi','body mass index','height','weight'],
+  meal: ['meal plan','diet','food plan','calories','breakfast','lunch','dinner'],
+  water: ['water','hydration','drink'],
+  appointment: ['appointment','book','schedule visit','checkup'],
+  reminder: ['remind','reminder','take at'],
+  weather: ['weather','temperature','forecast'],
+}
+function detectIntentScore(text) {
+  const t = text.toLowerCase()
+  let best = { intent: null, score: 0 }
+  Object.entries(intentKeywords).forEach(([intent, words]) => {
+    const hits = words.reduce((c, w) => c + (t.includes(w) ? 1 : 0), 0)
+    if (hits > best.score) best = { intent, score: hits }
+  })
+  const confidence = Math.min(1, best.score / 2) // 0, 0.5, 1.0 rough scaling
+  return { ...best, confidence }
 }
 
 async function generateSummary(history, apiKey) {
@@ -92,11 +108,11 @@ export default function App() {
   const [latencies,      setLatencies]      = useState([])
   const [apiCallCount,   setApiCallCount]   = useState(0)
   const [showBreathing,  setShowBreathing]  = useState(false)
+  const [contextState,   setContextState]   = useState({ location:null, doctor:null, diet:null, med:null, lastIntent:null })
 
   const chatEndRef = useRef(null)
   const startTime  = useRef(null)
 
-  // Live refs — stale closure fix
   const messagesRef       = useRef(messages)
   const languageRef       = useRef(language)
   const remindersRef      = useRef([])
@@ -113,7 +129,6 @@ export default function App() {
   useEffect(() => { messagesRef.current = messages }, [messages])
   useEffect(() => { languageRef.current = language }, [language])
 
-  // Hooks
   const { speak, stop, isSpeaking }   = useTTS()
   const { emotion, loading: emoLoad, detectEmotion } = useEmotion()
   const { reminders, isMockMode, notifGranted, addReminder, removeReminder, parseReminderText } = useReminders()
@@ -136,13 +151,9 @@ export default function App() {
   useEffect(() => { getWeatherRef.current    = getWeather     }, [getWeather])
   useEffect(() => { buildWeatherRef.current  = buildWeatherText  }, [buildWeatherText])
 
-  useEffect(() => {
-    // Default is dark — toggle 'light' class for light mode
-    document.documentElement.classList.toggle('light', !darkMode)
-  }, [darkMode])
+  useEffect(() => { document.documentElement.classList.toggle('light', !darkMode) }, [darkMode])
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:'smooth' }) }, [messages, summary])
 
-  // Groq response
   const handleGroqResponse = useCallback((agentText) => {
     const latency = startTime.current ? Math.round(performance.now() - startTime.current) : null
     setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:agentText, time:getTimeString(), latency }])
@@ -155,14 +166,13 @@ export default function App() {
   const { sendMessage, isLoading } = useGroq({ onResponse: handleGroqResponse })
   useEffect(() => { sendMessageRef.current = sendMessage }, [sendMessage])
 
-  // Stable ref-based wrapper — same function identity forever, no stale closure issues
   const handleFinalTranscriptRef = useRef(null)
   const onQuery = useCallback((t) => { handleFinalTranscriptRef.current?.(t) }, [])
 
-  // Module-level dedup set — survives re-renders completely
   const processingRef = useRef(new Set())
 
-  // Main transcript handler
+  const resetContext = () => setContextState({ location:null, doctor:null, diet:null, med:null, lastIntent:null })
+
   const handleFinalTranscript = useCallback(async (transcript) => {
     if (!transcript?.trim()) return
     if (processingRef.current.has(transcript)) return
@@ -174,38 +184,51 @@ export default function App() {
     startTime.current = performance.now()
     const userMsg = { role:'user', content:transcript, time:getTimeString() }
 
-    // Switch to home page to show the conversation
     setActivePage('home')
 
-    // Emergency detection
     const t = transcript.toLowerCase()
+    // Reset context command
+    if (t.includes('reset context') || t.includes('clear context') || t.includes('forget context')) {
+      resetContext()
+      const reply = "Context cleared. I’ll treat the next request as new."
+      setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
+      speakRef.current?.(reply, lang); clearPending(); return
+    }
+
     const isChest  = t.includes('chest pain') || t.includes('heart attack') || t.includes('chest hurts')
     const isBreath = t.includes("can't breathe") || t.includes('cannot breathe') || t.includes('difficulty breathing') || t.includes('shortness of breath')
     const isMental = t.includes('suicide') || t.includes('kill myself') || t.includes('self harm') || t.includes('want to die')
 
     if (isChest || isBreath) {
-      const reply = "⚠️ This sounds like a medical emergency. Please call 112 immediately or go to the nearest emergency room. Chest pain or difficulty breathing can be life-threatening. Don't wait — call 112 now."
+      const reply = "⚠️ This sounds like a medical emergency. Please call 112 immediately or go to the nearest emergency room. Don't wait — call now."
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
       speakRef.current?.('This sounds like a medical emergency. Please call 112 immediately.', lang)
       clearPending(); return
     }
     if (isMental) {
-      const reply = "I hear you and I'm really concerned. Please call iCall right now at 9152987821. They want to support you. You deserve care. Are you safe right now?"
+      const reply = "I hear you and I'm really concerned. Please call iCall right now at 9152987821. They want to support you. Are you safe right now?"
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
       speakRef.current?.('Please call iCall at 9152987821 right now.', lang)
       clearPending(); return
     }
 
-    // Breathing
     if (t.includes('breathing exercise') || t.includes('4-7-8') || t.includes('breathe with me')) {
       setShowBreathing(true)
-      const reply = "I've opened the breathing exercise. The 4-7-8 technique is great for stress — let's do it together."
+      const reply = "I’ve opened the breathing exercise. The 4-7-8 technique is great for stress — let's do it together."
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
       speakRef.current?.(reply, lang)
       clearPending(); return
     }
 
-    // Summary
+    // Intent confidence gate (before branches)
+    const { intent: guessedIntent, confidence } = detectIntentScore(transcript)
+    if (!guessedIntent || confidence < 0.5) {
+      const reply = "I heard that, but to be sure: do you want me to find a doctor, check a drug, make a meal plan, or something else?"
+      setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
+      speakRef.current?.(reply, lang)
+      clearPending(); return
+    }
+
     if (isAskingSummary(transcript)) {
       setMessages(prev => [...prev, userMsg])
       setLoadingSummary(true)
@@ -220,7 +243,6 @@ export default function App() {
       clearPending(); return
     }
 
-    // Reminders: list
     if (isAskingReminders(transcript)) {
       const rems  = remindersRef.current
       const reply = rems.length === 0
@@ -231,26 +253,25 @@ export default function App() {
       clearPending(); return
     }
 
-    // Reminders: set
     if (isSettingReminder(transcript)) {
       const { medication, times } = parseReminderRef.current(transcript)
       await addReminderRef.current(medication, times)
       const reply = `Done! Reminder set to take ${medication} at ${times.join(' and ')}. I'll notify you on time.`
+      setContextState(cs => ({ ...cs, med: medication, lastIntent:'reminder' }))
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:reply, time:getTimeString() }])
       speakRef.current?.(reply, lang)
       clearPending(); return
     }
 
-    // Appointment
     if (isAppointmentQuery(transcript)) {
       const data = bookAppointment(transcript)
       const text = buildAppointmentText(data)
+      setContextState(cs => ({ ...cs, doctor:data.doctor || cs.doctor, location:data.location || cs.location, lastIntent:'appointment' }))
       setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, appointmentCard:data, time:getTimeString() }])
       speakRef.current?.(text, lang)
       clearPending(); return
     }
 
-    // Water
     if (isWaterQuery(transcript)) {
       if (isLoggingWater(transcript)) {
         const data = logWater(transcript)
@@ -263,15 +284,16 @@ export default function App() {
         setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, waterCard:data, waterType:'status', time:getTimeString() }])
         speakRef.current?.(text, lang)
       }
+      setContextState(cs => ({ ...cs, lastIntent:'water' }))
       clearPending(); return
     }
 
-    // Meal plan
     if (isMealPlanQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
       try {
         const plan = await generateMealPlan(transcript, import.meta.env.VITE_GROQ_API_KEY)
         const text = buildMealText(plan)
+        setContextState(cs => ({ ...cs, diet: plan?.diet || cs.diet, lastIntent:'meal' }))
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, mealPlanCard:plan, time:getTimeString() }])
         speakRef.current?.(text, lang)
         setApiCallCount(prev => prev + 1)
@@ -283,35 +305,35 @@ export default function App() {
       clearPending(); return
     }
 
-    // Doctor finder
     if (isDoctorQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
 
-      // Try to extract a city name from the query (e.g. "hospitals in Pune")
       const cityMatch = transcript.match(/(?:in|near|at|around)\s+([A-Za-z\s]{3,25})(?:\s|$)/i)
       const mentionedCity = cityMatch ? cityMatch[1].trim() : null
 
       try {
         const data = await findNearbyDoctors(transcript)
         const text = buildDoctorText(data)
+        setContextState(cs => ({ ...cs, location: data?.location || mentionedCity || cs.location, doctor: data?.results?.[0]?.name || cs.doctor, lastIntent:'doctor' }))
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
       } catch (err) {
         let errMsg
         if (err.message === 'denied') {
-          errMsg = "📍 Location access is blocked. To fix: tap the lock icon in your browser's address bar → Site settings → Location → Allow. Then try again."
+          errMsg = "📍 Location access is blocked. Tap the lock in the address bar → Site settings → Location → Allow, then try again."
         } else if (err.message === 'not-supported') {
-          errMsg = "Your browser doesn't support location access. Try opening VoiceWell in Chrome for the best experience."
+          errMsg = "Your browser doesn't support location access. Try opening VoiceWell in Chrome."
         } else if (err.message === 'timeout' || err.message === 'unavailable') {
           const fallbackCity = mentionedCity || 'Mumbai'
           try {
             const data = await findNearbyDoctors(transcript, fallbackCity)
-            const text = `⚠️ Couldn't get your GPS location, so showing results near ${fallbackCity} instead. ${buildDoctorText(data)}`
+            const text = `⚠️ Couldn't get your GPS, so showing results near ${fallbackCity} instead. ${buildDoctorText(data)}`
+            setContextState(cs => ({ ...cs, location: fallbackCity, doctor: data?.results?.[0]?.name || cs.doctor, lastIntent:'doctor' }))
             setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
             speakRef.current?.(text, lang)
             clearPending(); return
           } catch {
-            errMsg = `📡 Location signal is weak and I couldn't find "${fallbackCity}" either. Please check your internet connection and try again, or say "hospitals in Mumbai" to search by city name.`
+            errMsg = `📡 Location weak and I couldn't find "${fallbackCity}" either. Try again or say "hospitals in Mumbai".`
           }
         } else {
           errMsg = "Something went wrong while searching for nearby facilities. Please try again in a moment."
@@ -322,12 +344,12 @@ export default function App() {
       clearPending(); return
     }
 
-    // Drug interaction
     if (isDrugQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
       const data = await checkInteraction(transcript)
       if (data) {
         const text = buildInteractionText(data)
+        setContextState(cs => ({ ...cs, med: data?.queryDrug || cs.med, lastIntent:'drug' }))
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, drugCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
         clearPending(); return
@@ -335,23 +357,23 @@ export default function App() {
       setMessages(prev => prev.filter(m=>m.role!=='loading'))
     }
 
-    // BMI
     if (isBMIQuery(transcript)) {
       const data = calculateBMI(transcript)
       if (data) {
         const text = buildBMIText(data)
+        setContextState(cs => ({ ...cs, lastIntent:'bmi' }))
         setMessages(prev => [...prev, userMsg, { role:'assistant', content:text, bmiCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
         clearPending(); return
       }
     }
 
-    // Nutrition
     if (isNutritionQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
       const data = await getNutritionRef.current(transcript)
       if (data) {
         const text = buildNutrRef.current(data)
+        setContextState(cs => ({ ...cs, diet: data?.diet || cs.diet, lastIntent:'nutrition' }))
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, nutritionCard:data, time:getTimeString() }])
         setApiCallCount(prev => prev + 1)
         speakRef.current?.(text, lang)
@@ -360,7 +382,6 @@ export default function App() {
       setMessages(prev => prev.filter(m=>m.role!=='loading'))
     }
 
-    // Weather
     if (isWeatherQuery(transcript)) {
       setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
       const cityMatch = transcript.match(/(?:in|at|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i)
@@ -368,6 +389,7 @@ export default function App() {
       const data      = await getWeatherRef.current(city)
       if (data) {
         const text = buildWeatherRef.current(data)
+        setContextState(cs => ({ ...cs, location: city || cs.location, lastIntent:'weather' }))
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, weatherCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
         clearPending(); return
@@ -393,7 +415,6 @@ export default function App() {
       isWaterQuery, isLoggingWater, logWater, getStatus, buildWaterText,
       isMealPlanQuery, generateMealPlan, buildMealText])
 
-  // Keep ref in sync so onQuery always calls the latest version
   useEffect(() => { handleFinalTranscriptRef.current = handleFinalTranscript }, [handleFinalTranscript])
 
   const { isListening, interimText, startListening, stopListening, error } = useSpeech({
@@ -401,14 +422,13 @@ export default function App() {
   })
 
   const handleClearChat = () => {
-    stop(); setSummary(null); setMoodHistory([])
+    stop(); setSummary(null); setMoodHistory([]); resetContext()
     setMessages([{ ...WELCOME, time:getTimeString(), content:"Chat cleared! How can I help you?" }])
   }
 
   const turnCount  = Math.max(0, messages.filter(m=>m.role!=='loading').length - 1)
   const avgLatency = latencies.length ? Math.round(latencies.reduce((a,b)=>a+b,0)/latencies.length) : null
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', background:'var(--bg)' }}>
 
@@ -425,10 +445,8 @@ export default function App() {
         activePage={activePage}       onNavigate={setActivePage}
       />
 
-      {/* Page content */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden' }}>
 
-        {/* ── HOME PAGE ────────────────────────────────────────────────── */}
         {activePage === 'home' && (
           <HomePage
             messages={messages}
@@ -444,18 +462,15 @@ export default function App() {
             onSpeak={speak} speak={speak} language={language}
             onNavigate={setActivePage} error={error}
             onQuery={onQuery}
+            contextState={contextState}
+            onResetContext={resetContext}
           />
         )}
 
-        {/* ── HEALTH PAGE ──────────────────────────────────────────────── */}
         {activePage === 'health' && (
-          <HealthPage
-            onQuery={onQuery}
-            speak={speak}
-          />
+          <HealthPage onQuery={onQuery} speak={speak} />
         )}
 
-        {/* ── NUTRITION PAGE ───────────────────────────────────────────── */}
         {activePage === 'nutrition' && (
           <NutritionPage
             onQuery={onQuery}
@@ -466,7 +481,6 @@ export default function App() {
           />
         )}
 
-        {/* ── MEDICATIONS PAGE ─────────────────────────────────────────── */}
         {activePage === 'medications' && (
           <MedicationsPage
             reminders={reminders}
@@ -477,12 +491,10 @@ export default function App() {
           />
         )}
 
-        {/* ── APPOINTMENTS PAGE ────────────────────────────────────────── */}
         {activePage === 'appointments' && (
           <AppointmentsPage onQuery={onQuery} />
         )}
 
-        {/* ── DASHBOARD PAGE ───────────────────────────────────────────── */}
         {activePage === 'dashboard' && (
           <DashboardPage
             turnCount={turnCount}
