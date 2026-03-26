@@ -221,7 +221,7 @@ export default function App() {
     }
 
     const isChest  = t.includes('chest pain') || t.includes('heart attack') || t.includes('chest hurts')
-    const isBreath = t.includes("can't breathe") || t.includes('cannot breathe') || t.includes('difficulty breathing') || t.includes('shortness of breath')
+    const isBreath = t.includes("can't breathe") || t.includes('cannot breathe') || t.includes('difficulty breathing') || t.includes('difficulty in breathing') || t.includes('trouble breathing') || t.includes('shortness of breath') || t.includes('short of breath')
     const isMental = t.includes('suicide') || t.includes('kill myself') || t.includes('self harm') || t.includes('want to die')
 
     if (isChest || isBreath) {
@@ -266,10 +266,10 @@ export default function App() {
     const { intent: guessedIntent, confidence } = detectIntentScore(transcript)
     const effectiveConfidence = (symptomDetected || mealPlanDetected) ? 1 : confidence
 
-    // Doctor queries are allowed even if we were in symptom mode
+    // Doctor queries: only when user clearly asks for location/search
     const doctorQueryAllowed =
       isDoctorQuery(transcript) &&
-      /(find|near|nearby|search|locate|hospital|clinic|appointment|book|doctor)/i.test(t)
+      /(find|near|nearby|search|locate|location|map|hospital)/i.test(t)
 
     if (!symptomDetected && !mealPlanDetected && (!guessedIntent || effectiveConfidence < 0.5) && !doctorQueryAllowed) {
       const reply = `I heard: “${transcript}”. Want me to: 
@@ -351,11 +351,11 @@ export default function App() {
       clearPending(); return
     }
 
-    // Doctor finder (triage first, then map results with fallback)
+    // Doctor finder (triage only when explicitly requested; GPS fallback)
     if (doctorQueryAllowed) {
-      setMessages(prev => [...prev, userMsg]) // keep the user message
+      setMessages(prev => [...prev, userMsg]) // keep user message
 
-      const triage = "I'll check nearby doctors. If your headache comes with vision changes, stiff neck, fever, or weakness, please go to emergency immediately."
+      const triage = "I'll check nearby doctors. If you have severe symptoms like chest pain, difficulty breathing, or sudden weakness, please go to the emergency room immediately."
       setMessages(prev => [...prev, { role:'assistant', content:triage, time:getTimeString() }])
       speakRef.current?.(triage, lang)
 
