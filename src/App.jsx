@@ -350,7 +350,7 @@ export default function App() {
       clearPending(); return
     }
 
-    // Doctor finder (triage only when explicitly requested; GPS fallback)
+    // Doctor finder (triage only when explicitly requested; deterministic fallback)
     if (doctorQueryAllowed) {
       setMessages(prev => [...prev, userMsg]) // keep user message
 
@@ -358,31 +358,45 @@ export default function App() {
       setMessages(prev => [...prev, { role:'assistant', content:triage, time:getTimeString() }])
       speakRef.current?.(triage, lang)
 
-      setMessages(prev => [...prev, { role:'loading', content:'', time:'' }])
-
+      // Parse an explicitly mentioned city (e.g., "in Pune")
       const cityMatch = transcript.match(/(?:in|near|at|around)\s+([A-Za-z\s]{3,25})(?:\s|$)/i)
       const mentionedCity = cityMatch ? cityMatch[1].trim() : null
 
+      // If no GPS and no city, ask for a city instead of failing
+      if (typeof navigator !== 'undefined' && !navigator.geolocation && !mentionedCity) {
+        const askCity = "I can’t access your GPS. Tell me a city, e.g., “hospitals in Mumbai.”"
+        setMessages(prev => [...prev, { role:'assistant', content:askCity, time:getTimeString() }])
+        speakRef.current?.(askCity, lang)
+        clearPending(); return
+      }
+
+      setMessages(prev => [...prev, { role:'loading', content:'', time:'' }])
+
+      const preferredCity = mentionedCity || null
+
       try {
-        const data = await findNearbyDoctors(transcript)
+        const data = preferredCity
+          ? await findNearbyDoctors(transcript, preferredCity)
+          : await findNearbyDoctors(transcript)
+
         const text = buildDoctorText(data)
-        setContextState(cs => ({ ...cs, location: data?.location || mentionedCity || cs.location, doctor: data?.results?.[0]?.name || cs.doctor, lastIntent:'doctor' }))
+        setContextState(cs => ({
+          ...cs,
+          location: data?.location || preferredCity || cs.location,
+          doctor: data?.results?.[0]?.name || cs.doctor,
+          lastIntent:'doctor'
+        }))
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
       } catch (err) {
-        const fallbackCity = mentionedCity || 'Mumbai'
-        try {
-          const data = await findNearbyDoctors(transcript, fallbackCity)
-          const text = `⚠️ Couldn't access your GPS, so here are doctors near ${fallbackCity}. ${buildDoctorText(data)}`
-          setContextState(cs => ({ ...cs, location: fallbackCity, doctor: data?.results?.[0]?.name || cs.doctor, lastIntent:'doctor' }))
-          setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
-          speakRef.current?.(text, lang)
-          clearPending(); return
-        } catch {
-          const errMsg = "I couldn’t access your location. Say “hospitals in <your city>” or enable location and try again."
+        if (!preferredCity) {
+          const askCity = "I can’t get your location. Say “hospitals in <your city>” and I’ll fetch results."
+          setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:askCity, time:getTimeString() }])
+          speakRef.current?.(askCity, lang)
+        } else {
+          const errMsg = `I couldn’t fetch results for ${preferredCity} right now. Please try again in a moment.`
           setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:errMsg, time:getTimeString() }])
           speakRef.current?.(errMsg, lang)
-          clearPending(); return
         }
       }
       clearPending(); return
