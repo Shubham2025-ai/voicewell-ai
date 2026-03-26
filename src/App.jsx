@@ -60,7 +60,8 @@ function detectIntentScore(text) {
 const isSymptom = (text) => {
   const t = text.toLowerCase()
   const symptomWords = [
-    'headache','migraine','fever','nausea','cough','cold','pain','dizzy','dizziness',
+    'headache','migraine','fever','high fever','viral fever','dengue','malaria','typhoid','covid','influenza','flu',
+    'nausea','cough','cold','pain','dizzy','dizziness',
     'vomit','vomiting','sore throat','rash','fatigue','chills','congestion','stomachache',
     'cramp','body ache','throat pain','earache','toothache',
     // Heat / dehydration / exhaustion
