@@ -39,7 +39,7 @@ const intentKeywords = {
   doctor: ['doctor','dentist','clinic','hospital','nearby','near me','appointment with doctor','find doctor','physician'],
   drug: ['drug','interaction','medicine','pill','tablet','ibuprofen','paracetamol','aspirin'],
   bmi: ['bmi','body mass index','height','weight'],
-  meal: ['meal plan','diet','food plan','calories','breakfast','lunch','dinner','menu','meals','vegetarian','veg'],
+  meal: ['meal plan','diet plan','diet','food plan','menu','meal','meals','vegetarian','non-vegetarian','vegan'],
   water: ['water','hydration','drink'],
   appointment: ['appointment','book','schedule visit','checkup'],
   reminder: ['remind','reminder','take at'],
@@ -62,7 +62,10 @@ const isSymptom = (text) => {
   const symptomWords = [
     'headache','migraine','fever','nausea','cough','cold','pain','dizzy','dizziness',
     'vomit','vomiting','sore throat','rash','fatigue','chills','congestion','stomachache',
-    'cramp','body ache','throat pain','earache','toothache'
+    'cramp','body ache','throat pain','earache','toothache',
+    // Heat / dehydration / exhaustion
+    'heat exhaustion','heat stroke','heatstroke','overheat','overheated','hot','felt very hot',
+    'dehydration','dehydrated','dry skin','sunburn','weak','weakness','lightheaded','light headed'
   ]
   return symptomWords.some(w => t.includes(w))
 }
@@ -251,7 +254,7 @@ export default function App() {
     }
 
     // Intent confidence gate with symptom + meal-plan override
-    const symptomDetected = isSymptom(transcript)
+    const symptomDetected = isSymptom(transcript) || contextState.lastIntent === 'symptom'
     const mealPlanDetected = isMealPlanQuery(transcript)
     const { intent: guessedIntent, confidence } = detectIntentScore(transcript)
     const effectiveConfidence = (symptomDetected || mealPlanDetected) ? 1 : confidence
@@ -433,7 +436,11 @@ export default function App() {
       setMessages(prev => prev.filter(m=>m.role!=='loading'))
     }
 
-    // Default: Groq
+    // Default: Groq (symptom follow-ups also come here)
+    if (symptomDetected && contextState.lastIntent !== 'symptom') {
+      setContextState(cs => ({ ...cs, lastIntent:'symptom' }))
+    }
+
     setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
     const history = messagesRef.current.filter(m=>m.role!=='loading').map(m=>({ role:m.role==='assistant'?'assistant':'user', content:m.content }))
     const detectedEmotion = await detectEmotionRef.current(transcript)
@@ -450,7 +457,7 @@ export default function App() {
       checkInteraction, buildInteractionText, showBreathing, isDoctorQuery, findNearbyDoctors,
       buildDoctorText, isAppointmentQuery, bookAppointment, buildAppointmentText,
       isWaterQuery, isLoggingWater, logWater, getStatus, buildWaterText,
-      isMealPlanQuery, generateMealPlan, buildMealText])
+      isMealPlanQuery, generateMealPlan, buildMealText, contextState.lastIntent])
 
   useEffect(() => { handleFinalTranscriptRef.current = handleFinalTranscript }, [handleFinalTranscript])
 
