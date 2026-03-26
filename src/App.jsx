@@ -119,7 +119,6 @@ async function generateSummary(history, apiKey) {
 export default function App() {
   const [messages,       setMessages]       = useState([WELCOME])
   const [language,       setLanguage]       = useState('en-US')
-  const [darkMode,       setDarkMode]       = useState(true)
   const [activePage,     setActivePage]     = useState('home')
   const [summary,        setSummary]        = useState(null)
   const [loadingSummary, setLoadingSummary] = useState(false)
@@ -173,7 +172,6 @@ export default function App() {
   useEffect(() => { getWeatherRef.current    = getWeather     }, [getWeather])
   useEffect(() => { buildWeatherRef.current  = buildWeatherText  }, [buildWeatherText])
 
-  useEffect(() => { document.documentElement.classList.toggle('light', !darkMode) }, [darkMode])
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior:'smooth' }) }, [messages, summary])
 
   const handleGroqResponse = useCallback((agentText) => {
@@ -486,7 +484,6 @@ export default function App() {
 
       <Header
         language={language}           onLanguageToggle={() => setLanguage(l=>l==='en-US'?'hi-IN':'en-US')}
-        darkMode={darkMode}           onDarkToggle={() => setDarkMode(d=>!d)}
         onClearChat={handleClearChat} onSummary={() => onQuery('Give me a session summary')}
         emotion={emotion}             emotionLoading={emoLoad}
         reminderCount={reminders.length}

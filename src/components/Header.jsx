@@ -5,14 +5,11 @@ export const PAGES = [
   { id:'home',         icon:'🎙️', label:'Voice'     },
   { id:'health',       icon:'🩺',  label:'Health'    },
   { id:'nutrition',    icon:'🍽️', label:'Nutrition' },
-  // { id:'medications',  icon:'💊',  label:'Meds'   }, // removed earlier
   { id:'appointments', icon:'📅',  label:'Appts'     },
-  // { id:'dashboard',    icon:'📊',  label:'Stats'  }, // removed
 ]
 
 export default function Header({
   language, onLanguageToggle,
-  darkMode, onDarkToggle,
   onClearChat, onSummary,
   emotion, emotionLoading,
   reminderCount, isConnected,
@@ -125,8 +122,6 @@ export default function Header({
             <span style={{fontSize:14}}>{language==='en-US'?'🇬🇧':'🇮🇳'}</span>
             <span>{language==='en-US'?'EN':'हिं'}</span>
           </button>
-
-          <HBtn onClick={onDarkToggle} icon={darkMode ? '☀️' : '🌙'} tip={darkMode ? 'Light mode' : 'Dark mode'} />
 
           <button
             onClick={() => setMobileOpen(o => !o)}
