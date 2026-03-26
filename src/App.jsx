@@ -65,7 +65,10 @@ const isSymptom = (text) => {
     'cramp','body ache','throat pain','earache','toothache',
     // Heat / dehydration / exhaustion
     'heat exhaustion','heat stroke','heatstroke','overheat','overheated','hot','felt very hot',
-    'dehydration','dehydrated','dry skin','sunburn','weak','weakness','lightheaded','light headed'
+    'dehydration','dehydrated','dry skin','sunburn','weak','weakness','lightheaded','light headed',
+    // General unwell feelings
+    "don't feel good",'dont feel good','not feeling well','not feeling good',
+    'feel unwell','feel sick','feeling sick','unwell','sick','feel bad'
   ]
   return symptomWords.some(w => t.includes(w))
 }
