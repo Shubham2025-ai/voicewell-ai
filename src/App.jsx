@@ -366,28 +366,20 @@ export default function App() {
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
         speakRef.current?.(text, lang)
       } catch (err) {
-        let errMsg
-        if (err.message === 'denied') {
-          errMsg = "📍 Location access is blocked. Tap the lock in the address bar → Site settings → Location → Allow, then try again."
-        } else if (err.message === 'not-supported') {
-          errMsg = "Your browser doesn't support location access. Try opening VoiceWell in Chrome."
-        } else if (err.message === 'timeout' || err.message === 'unavailable') {
-          const fallbackCity = mentionedCity || 'Mumbai'
-          try {
-            const data = await findNearbyDoctors(transcript, fallbackCity)
-            const text = `⚠️ Couldn't get your GPS, so showing results near ${fallbackCity} instead. ${buildDoctorText(data)}`
-            setContextState(cs => ({ ...cs, location: fallbackCity, doctor: data?.results?.[0]?.name || cs.doctor, lastIntent:'doctor' }))
-            setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
-            speakRef.current?.(text, lang)
-            clearPending(); return
-          } catch {
-            errMsg = `📡 Location weak and I couldn't find "${fallbackCity}" either. Try again or say "hospitals in Mumbai".`
-          }
-        } else {
-          errMsg = "Something went wrong while searching for nearby facilities. Please try again in a moment."
+        const fallbackCity = mentionedCity || 'Mumbai'
+        try {
+          const data = await findNearbyDoctors(transcript, fallbackCity)
+          const text = `⚠️ Couldn't access your GPS, so showing results near ${fallbackCity} instead. ${buildDoctorText(data)}`
+          setContextState(cs => ({ ...cs, location: fallbackCity, doctor: data?.results?.[0]?.name || cs.doctor, lastIntent:'doctor' }))
+          setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
+          speakRef.current?.(text, lang)
+          clearPending(); return
+        } catch {
+          const errMsg = "I couldn’t access your location. Say “hospitals in <your city>” or enable location and try again."
+          setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:errMsg, time:getTimeString() }])
+          speakRef.current?.(errMsg, lang)
+          clearPending(); return
         }
-        setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:errMsg, time:getTimeString() }])
-        speakRef.current?.(errMsg, lang)
       }
       clearPending(); return
     }
