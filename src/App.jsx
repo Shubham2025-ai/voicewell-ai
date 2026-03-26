@@ -70,7 +70,9 @@ const isSymptom = (text) => {
     "don't feel good",'dont feel good','not feeling well','not feeling good',
     'feel unwell','feel sick','feeling sick','unwell','sick','feel bad',
     // Fear / serious concern
-    'scared','afraid','something is wrong','seriously wrong','worried something is wrong','panic','panicking'
+    'scared','afraid','something is wrong','seriously wrong','worried something is wrong','panic','panicking',
+    // Stress / anxiety
+    'stress','stressed','anxiety','anxious','very stressed','very anxious','panic attack','overwhelmed','worried'
   ]
   return symptomWords.some(w => t.includes(w))
 }
@@ -379,7 +381,7 @@ export default function App() {
             speakRef.current?.(text, lang)
             clearPending(); return
           } catch {
-            errMsg = `���� Location weak and I couldn't find "${fallbackCity}" either. Try again or say "hospitals in Mumbai".`
+            errMsg = `📡 Location weak and I couldn't find "${fallbackCity}" either. Try again or say "hospitals in Mumbai".`
           }
         } else {
           errMsg = "Something went wrong while searching for nearby facilities. Please try again in a moment."
