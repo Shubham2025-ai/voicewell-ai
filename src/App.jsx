@@ -266,13 +266,12 @@ export default function App() {
     const { intent: guessedIntent, confidence } = detectIntentScore(transcript)
     const effectiveConfidence = (symptomDetected || mealPlanDetected) ? 1 : confidence
 
-    // Gate doctor intent: only if user clearly asks to find/search/book/near
+    // Doctor queries are allowed even if we were in symptom mode
     const doctorQueryAllowed =
       isDoctorQuery(transcript) &&
-      /(find|near|nearby|search|locate|hospital|clinic|appointment|book)/i.test(t) &&
-      !symptomDetected
+      /(find|near|nearby|search|locate|hospital|clinic|appointment|book|doctor)/i.test(t)
 
-    if (!symptomDetected && !mealPlanDetected && (!guessedIntent || effectiveConfidence < 0.5)) {
+    if (!symptomDetected && !mealPlanDetected && (!guessedIntent || effectiveConfidence < 0.5) && !doctorQueryAllowed) {
       const reply = `I heard: “${transcript}”. Want me to: 
 1) find a doctor, 
 2) check a medicine interaction, 
@@ -352,7 +351,7 @@ export default function App() {
       clearPending(); return
     }
 
-    // Doctor finder only if allowed
+    // Doctor finder (always attempt; fall back to city when GPS blocked)
     if (doctorQueryAllowed) {
       setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
 
