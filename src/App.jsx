@@ -68,7 +68,9 @@ const isSymptom = (text) => {
     'dehydration','dehydrated','dry skin','sunburn','weak','weakness','lightheaded','light headed',
     // General unwell feelings
     "don't feel good",'dont feel good','not feeling well','not feeling good',
-    'feel unwell','feel sick','feeling sick','unwell','sick','feel bad'
+    'feel unwell','feel sick','feeling sick','unwell','sick','feel bad',
+    // Fear / serious concern
+    'scared','afraid','something is wrong','seriously wrong','worried something is wrong','panic','panicking'
   ]
   return symptomWords.some(w => t.includes(w))
 }
@@ -338,8 +340,10 @@ export default function App() {
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, mealPlanCard:plan, time:getTimeString() }])
         speakRef.current?.(text, lang)
         setApiCallCount(prev => prev + 1)
-      } catch {
-        const err = "I couldn't generate a meal plan right now. Please try again."
+      } catch (e) {
+        const err = e.message === 'missing-key'
+          ? "Meal planning needs the Groq API key. Please set VITE_GROQ_API_KEY in .env and restart."
+          : "I couldn't generate a meal plan right now. Please try again."
         setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:err, time:getTimeString() }])
         speakRef.current?.(err, lang)
       }
@@ -375,7 +379,7 @@ export default function App() {
             speakRef.current?.(text, lang)
             clearPending(); return
           } catch {
-            errMsg = `📡 Location weak and I couldn't find "${fallbackCity}" either. Try again or say "hospitals in Mumbai".`
+            errMsg = `���� Location weak and I couldn't find "${fallbackCity}" either. Try again or say "hospitals in Mumbai".`
           }
         } else {
           errMsg = "Something went wrong while searching for nearby facilities. Please try again in a moment."

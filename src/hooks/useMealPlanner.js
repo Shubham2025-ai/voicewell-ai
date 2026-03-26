@@ -3,7 +3,25 @@ import { useCallback } from 'react'
 /**
  * useMealPlanner — generates a personalised 7-day Indian meal plan via Groq.
  * Detects dietary preferences from voice and generates a structured plan.
+ * If Groq fails or the API key is missing, falls back to a baked-in 7-day plan.
  */
+
+const OFFLINE_PLAN = {
+  goal: 'balanced nourishment',
+  diet: 'non-vegetarian',
+  calories: '~2000 kcal/day',
+  source: 'offline',
+  days: [
+    { day:'Monday',    breakfast:{name:'Oats & Banana', items:['oats','banana','milk'], calories:350}, lunch:{name:'Chicken Curry', items:['chicken','roti','salad'], calories:550}, snack:{name:'Sprout chaat', items:['sprouts','onion'], calories:180}, dinner:{name:'Fish Fry', items:['fish','rice','veg'], calories:520}},
+    { day:'Tuesday',   breakfast:{name:'Paneer Toast', items:['paneer','bread'], calories:320}, lunch:{name:'Grilled Chicken', items:['chicken','quinoa','salad'], calories:560}, snack:{name:'Curd & Nuts', items:['curd','almonds'], calories:180}, dinner:{name:'Egg Bhurji', items:['eggs','roti','veg'], calories:520}},
+    { day:'Wednesday', breakfast:{name:'Poha & Egg', items:['poha','egg'], calories:330}, lunch:{name:'Fish Curry', items:['fish','rice','veg'], calories:560}, snack:{name:'Fruit Bowl', items:['apple','banana'], calories:150}, dinner:{name:'Chicken Stir Fry', items:['chicken','veg','rice'], calories:520}},
+    { day:'Thursday',  breakfast:{name:'Upma + Nuts', items:['upma','peanuts'], calories:340}, lunch:{name:'Paneer Bhurji', items:['paneer','roti','salad'], calories:540}, snack:{name:'Buttermilk', items:['chaas'], calories:120}, dinner:{name:'Grilled Fish', items:['fish','quinoa','veg'], calories:520}},
+    { day:'Friday',    breakfast:{name:'Idli & Sambar', items:['idli','sambar'], calories:320}, lunch:{name:'Chicken Biryani', items:['chicken','rice','raita'], calories:620}, snack:{name:'Roasted Chana', items:['chana'], calories:140}, dinner:{name:'Egg Curry', items:['egg','roti','veg'], calories:500}},
+    { day:'Saturday',  breakfast:{name:'Paratha + Curd', items:['paratha','curd'], calories:360}, lunch:{name:'Mutton Curry', items:['mutton','rice','salad'], calories:650}, snack:{name:'Protein Shake', items:['whey','milk'], calories:180}, dinner:{name:'Tandoori Chicken', items:['chicken','salad'], calories:450}},
+    { day:'Sunday',    breakfast:{name:'Dosa & Chutney', items:['dosa','chutney'], calories:330}, lunch:{name:'Fish Tikka', items:['fish','roti','salad'], calories:560}, snack:{name:'Peanut Butter Toast', items:['pb','bread'], calories:210}, dinner:{name:'Chicken Soup', items:['chicken','veg'], calories:420}},
+  ]
+}
+
 export function useMealPlanner() {
 
   const isMealPlanQuery = useCallback((text) => {
@@ -30,8 +48,6 @@ export function useMealPlanner() {
   }, [])
 
   const generateMealPlan = useCallback(async (transcript, apiKey) => {
-    if (!apiKey) throw new Error('missing-key')
-
     const t = transcript.toLowerCase()
 
     // Detect preferences (non-veg first)
@@ -55,6 +71,7 @@ export function useMealPlanner() {
       : 'balanced healthy living (~1800-2000 kcal/day)'
 
     const callGroq = async () => {
+      if (!apiKey) throw new Error('missing-key')
       const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
@@ -82,7 +99,6 @@ Keep item names SHORT (max 3 words each). Include exactly 7 days.`
       return await r.json()
     }
 
-    // Enforce 7 full days; retry once if incomplete
     let plan = null
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -94,11 +110,15 @@ Keep item names SHORT (max 3 words each). Include exactly 7 days.`
         if (!jsonMatch) continue
         const parsed = JSON.parse(jsonMatch[0])
         if (parsed.days?.length >= 7) { plan = parsed; break }
-      } catch { continue }
+      } catch (e) {
+        if (attempt === 1) throw e
+      }
     }
 
-    if (!plan) throw new Error('Could not generate full 7-day meal plan')
-    // If model gave more than 7, trim to first 7
+    if (!plan) {
+      // fallback offline 7-day plan
+      return { ...OFFLINE_PLAN, diet, goal }
+    }
     if (plan.days.length > 7) plan.days = plan.days.slice(0,7)
     plan.calories = plan.calories || '~2000 kcal/day'
     return plan
