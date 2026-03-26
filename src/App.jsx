@@ -351,9 +351,15 @@ export default function App() {
       clearPending(); return
     }
 
-    // Doctor finder (always attempt; fall back to city when GPS blocked)
+    // Doctor finder (triage first, then map results with fallback)
     if (doctorQueryAllowed) {
-      setMessages(prev => [...prev, userMsg, { role:'loading', content:'', time:'' }])
+      setMessages(prev => [...prev, userMsg]) // keep the user message
+
+      const triage = "I'll check nearby doctors. If your headache comes with vision changes, stiff neck, fever, or weakness, please go to emergency immediately."
+      setMessages(prev => [...prev, { role:'assistant', content:triage, time:getTimeString() }])
+      speakRef.current?.(triage, lang)
+
+      setMessages(prev => [...prev, { role:'loading', content:'', time:'' }])
 
       const cityMatch = transcript.match(/(?:in|near|at|around)\s+([A-Za-z\s]{3,25})(?:\s|$)/i)
       const mentionedCity = cityMatch ? cityMatch[1].trim() : null
@@ -368,7 +374,7 @@ export default function App() {
         const fallbackCity = mentionedCity || 'Mumbai'
         try {
           const data = await findNearbyDoctors(transcript, fallbackCity)
-          const text = `⚠️ Couldn't access your GPS, so showing results near ${fallbackCity} instead. ${buildDoctorText(data)}`
+          const text = `⚠️ Couldn't access your GPS, so here are doctors near ${fallbackCity}. ${buildDoctorText(data)}`
           setContextState(cs => ({ ...cs, location: fallbackCity, doctor: data?.results?.[0]?.name || cs.doctor, lastIntent:'doctor' }))
           setMessages(prev => [...prev.filter(m=>m.role!=='loading'), { role:'assistant', content:text, doctorCard:data, time:getTimeString() }])
           speakRef.current?.(text, lang)
