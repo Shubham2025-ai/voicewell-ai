@@ -9,7 +9,7 @@
   --font-body:    'Instrument Sans', sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
 
-  /* Pure black theme */
+  /* Pure black theme with enhanced palette */
   --bg:           #080808;
   --bg-2:         #0f0f0f;
   --surface:      #111111;
@@ -20,18 +20,30 @@
   --text-1:       #f0f0f0;
   --text-2:       #888888;
   --text-3:       #444444;
+  
+  /* Premium gradient colors */
   --green:        #00e87a;
   --green-2:      #00c264;
   --green-dim:    rgba(0,232,122,0.08);
   --green-glow:   rgba(0,232,122,0.2);
+  
   --red:          #ff3d5a;
   --amber:        #f59e0b;
   --blue:         #3b82f6;
+  --cyan:         #06b6d4;
   --purple:       #8b5cf6;
+  --pink:         #ec4899;
+  
+  /* 3D & Effects */
   --radius:       10px;
   --radius-lg:    16px;
   --shadow:       0 1px 8px rgba(0,0,0,0.6);
   --shadow-lg:    0 4px 24px rgba(0,0,0,0.8);
+  --shadow-xl:    0 20px 50px rgba(0,0,0,0.9);
+  --shadow-inner: inset 0 1px 2px rgba(255,255,255,0.04);
+  
+  /* Perspective for 3D */
+  --perspective:  1200px;
 }
 
 /* Light mode override */
@@ -205,4 +217,148 @@ body {
   background: linear-gradient(135deg, #00e87a, #00c264) !important;
   color: #000 !important;
   box-shadow: 0 2px 12px rgba(0,232,122,0.3);
+}
+
+/* ──────────────────────────────────────────────────────────────────── */
+/* ──                   3D & MODERN ENHANCEMENTS                      ── */
+/* ──────────────────────────────────────────────────────────────────── */
+
+/* ── 3D Tilt Effect ───────────────────────── */
+@keyframes tilt-enter {
+  0% { transform: rotateX(5deg) rotateY(-5deg) translateZ(0) scale(0.98); opacity: 0; }
+  100% { transform: rotateX(0) rotateY(0) translateZ(0) scale(1); opacity: 1; }
+}
+.tilt-enter { animation: tilt-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+@keyframes float-up {
+  0% { transform: translateY(20px) translateZ(0); opacity: 0; }
+  100% { transform: translateY(0) translateZ(0); opacity: 1; }
+}
+.float-up { animation: float-up 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+@keyframes float-scale {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.02) translateY(-3px); }
+}
+.float-scale { animation: float-scale 3s ease-in-out infinite; }
+
+/* ── 3D Card Flip ────────────────────────── */
+@keyframes card-flip {
+  0% { transform: rotateY(-10deg) rotateX(5deg) translateZ(-20px); opacity: 0; }
+  100% { transform: rotateY(0) rotateX(0) translateZ(0); opacity: 1; }
+}
+.card-flip { animation: card-flip 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+/* ── Ripple effect ───────────────────────── */
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(4); opacity: 0; }
+}
+@keyframes ripple-enter {
+  0% { transform: scale(0) translateZ(0); opacity: 1; }
+  100% { transform: scale(1.5) translateZ(0); opacity: 0; }
+}
+.ripple { animation: ripple 0.8s ease-out; }
+.ripple-enter { animation: ripple-enter 0.6s ease-out; }
+
+/* ── Glow pulse ──────────────────────────── */
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,232,122,0.3); }
+  50% { box-shadow: 0 0 0 12px rgba(0,232,122,0); }
+}
+.glow-pulse { animation: glow-pulse 2.5s ease-in-out infinite; }
+
+/* ── Gradient shift ──────────────────────── */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.gradient-shift { animation: gradient-shift 6s ease infinite; background-size: 200% 200%; }
+
+/* ── Shimmer advanced ────────────────────── */
+@keyframes shimmer-pro {
+  -100% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.shimmer-pro {
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.1), rgba(255,255,255,0));
+  background-size: 50% 100%;
+  animation: shimmer-pro 2s infinite;
+}
+
+/* ── Bounce in ───────────────────────────── */
+@keyframes bounce-in {
+  0% { transform: scale(0) translateZ(0); opacity: 0; }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1) translateZ(0); opacity: 1; }
+}
+.bounce-in { animation: bounce-in 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
+
+/* ── Pulse scale ────────────────────────── */
+@keyframes pulse-scale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.pulse-scale { animation: pulse-scale 2s ease-in-out infinite; }
+
+/* ── Neon glow flicker ──────────────────── */
+@keyframes neon-flicker {
+  0%, 100% { text-shadow: 0 0 10px rgba(0,232,122,0.5), 0 0 20px rgba(0,232,122,0.3); }
+  50% { text-shadow: 0 0 20px rgba(0,232,122,0.8), 0 0 30px rgba(0,232,122,0.5), 0 0 40px rgba(0,232,122,0.3); }
+}
+.neon-glow { animation: neon-flicker 3s ease-in-out infinite; }
+
+/* ── Stagger delay helper ───────────────── */
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.1s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.2s; }
+.stagger-5 { animation-delay: 0.25s; }
+
+/* ── Glassmorphism ──────────────────────── */
+.glass {
+  background: rgba(17, 17, 17, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), var(--shadow-inner);
+}
+.glass-glow {
+  background: rgba(17, 17, 17, 0.7);
+  backdrop-filter: blur(30px);
+  border: 1px solid rgba(0, 232, 122, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 232, 122, 0.1), var(--shadow-inner);
+}
+
+/* ── 3D Hover effects ───────────────────── */
+.card-3d {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-style: preserve-3d;
+  perspective: var(--perspective);
+}
+.card-3d:hover {
+  transform: translateY(-8px) rotateX(3deg) rotateY(-2deg) scale(1.02);
+  box-shadow: 0 20px 50px rgba(0, 232, 122, 0.15), 0 0 40px rgba(0, 232, 122, 0.1);
+}
+
+/* ── Button enhancement ─────────────────── */
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(0, 232, 122, 0.3);
+  transition: all 0.3s;
+}
+.btn-glow::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  animation: shimmer-pro 2s infinite;
+}
+.btn-glow:hover {
+  box-shadow: 0 0 30px rgba(0, 232, 122, 0.6), 0 10px 40px rgba(0, 232, 122, 0.2);
+  transform: translateY(-2px) scale(1.05);
 }
