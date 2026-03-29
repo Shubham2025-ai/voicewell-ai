@@ -23,11 +23,11 @@ export default function Header({
         height: 58,
         background: 'rgba(4,4,4,0.97)',
         backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        borderBottom: '1px solid rgba(0,232,122,0.1)',
         display: 'flex', alignItems: 'center',
         padding: '0 20px', gap: 0,
         flexShrink: 0, position: 'relative', zIndex: 100,
-        boxShadow: '0 1px 0 rgba(255,255,255,0.04), 0 4px 24px rgba(0,0,0,0.4)',
+        boxShadow: '0 1px 0 rgba(0,232,122,0.05), 0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04)',
       }}>
 
         {/* Logo */}
@@ -36,19 +36,34 @@ export default function Header({
             width:32, height:32, borderRadius:9, flexShrink:0,
             background:'linear-gradient(135deg,#00e87a,#00b85e)',
             display:'flex', alignItems:'center', justifyContent:'center',
-            fontSize:16, boxShadow:'0 0 16px rgba(0,232,122,0.3), 0 2px 8px rgba(0,0,0,0.4)',
-          }}>🎙️</div>
+            fontSize:16, boxShadow:'0 0 16px rgba(0,232,122,0.5), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.2)',
+            transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'scale(1.1) rotateZ(5deg)';
+            e.currentTarget.style.boxShadow = '0 0 24px rgba(0,232,122,0.8), 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.3)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'scale(1) rotateZ(0)';
+            e.currentTarget.style.boxShadow = '0 0 16px rgba(0,232,122,0.5), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.2)';
+          }}
+          >🎙️</div>
           <div>
             <div style={{
               fontFamily:'var(--font-display)', fontWeight:800,
               fontSize:14, color:'#fff', letterSpacing:'-0.5px', lineHeight:1.1,
+              background: 'linear-gradient(135deg, #00e87a, #00b85e)',
+              backgroundClip: 'text',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
             }}>VoiceWell AI</div>
             <div style={{ display:'flex', alignItems:'center', gap:4, marginTop:2 }}>
               <div style={{
                 width:5, height:5, borderRadius:'50%',
                 background: isConnected ? '#00e87a' : '#444',
-                boxShadow: isConnected ? '0 0 6px #00e87a' : 'none',
-                transition: 'all 0.3s',
+                boxShadow: isConnected ? '0 0 8px #00e87a, 0 0 16px rgba(0,232,122,0.3)' : 'none',
+                transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
               }}/>
               <span style={{ fontSize:9, color: isConnected ? '#2a6644' : '#333', fontFamily:'var(--font-mono)', letterSpacing:'0.04em' }}>
                 {isConnected ? 'live' : 'offline'}
@@ -61,9 +76,11 @@ export default function Header({
         <nav style={{
           position:'absolute', left:'50%', transform:'translateX(-50%)',
           display:'flex', alignItems:'center', gap:1,
-          background:'rgba(255,255,255,0.04)',
-          border:'1px solid rgba(255,255,255,0.08)',
+          background:'rgba(0,0,0,0.5)',
+          backdropFilter:'blur(15px)',
+          border:'1px solid rgba(0,232,122,0.15)',
           borderRadius:12, padding:'4px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.03)',
         }}>
           {PAGES.map(p => {
             const active = activePage === p.id
@@ -73,16 +90,16 @@ export default function Header({
                 padding:'5px 13px', borderRadius:8,
                 border:'none', cursor:'pointer', fontSize:11.5,
                 fontFamily:'var(--font-body)', fontWeight: active ? 700 : 400,
-                transition:'all 0.15s', position:'relative',
+                transition:'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)', position:'relative',
                 background: active
                   ? 'linear-gradient(135deg,#00e87a,#00c264)'
-                  : 'transparent',
+                  : 'rgba(255,255,255,0.04)',
                 color: active ? '#000' : 'rgba(255,255,255,0.35)',
-                boxShadow: active ? '0 2px 12px rgba(0,232,122,0.3)' : 'none',
-                transform: active ? 'scale(1)' : 'scale(0.97)',
+                boxShadow: active ? '0 4px 16px rgba(0,232,122,0.35), inset 0 1px 2px rgba(255,255,255,0.2)' : 'none',
+                transform: active ? 'scale(1) translateZ(0)' : 'scale(0.97) translateZ(0)',
               }}
-              onMouseEnter={e => { if (!active) { e.currentTarget.style.color='rgba(255,255,255,0.75)'; e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.transform='scale(1)' }}}
-              onMouseLeave={e => { if (!active) { e.currentTarget.style.color='rgba(255,255,255,0.35)'; e.currentTarget.style.background='transparent'; e.currentTarget.style.transform='scale(0.97)' }}}
+              onMouseEnter={e => { if (!active) { e.currentTarget.style.color='rgba(255,255,255,0.85)'; e.currentTarget.style.background='rgba(0,232,122,0.08)'; e.currentTarget.style.transform='scale(1) translateZ(0)'; e.currentTarget.style.borderColor='rgba(0,232,122,0.2)' }}}
+              onMouseLeave={e => { if (!active) { e.currentTarget.style.color='rgba(255,255,255,0.35)'; e.currentTarget.style.background='rgba(255,255,255,0.04)'; e.currentTarget.style.transform='scale(0.97) translateZ(0)'; e.currentTarget.style.borderColor='transparent' }}}
               >
                 <span style={{ fontSize:13 }}>{p.icon}</span>
                 <span>{p.label}</span>

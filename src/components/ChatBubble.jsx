@@ -62,10 +62,25 @@ export default function ChatBubble({ message, onSpeak, onQuery }) {
         color: isUser ? '#fff' : '#000',
         flexShrink:0,
         boxShadow: isUser
-          ? '0 2px 8px rgba(99,102,241,0.3)'
-          : '0 2px 8px rgba(0,232,122,0.25)',
+          ? '0 4px 12px rgba(99,102,241,0.4), inset 0 1px 2px rgba(255,255,255,0.2)'
+          : '0 4px 12px rgba(0,232,122,0.35), inset 0 1px 2px rgba(255,255,255,0.15)',
         fontFamily:'var(--font-display)',
-      }}>
+        transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        transform: 'scale(1)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.1)';
+        e.currentTarget.style.boxShadow = isUser
+          ? '0 6px 16px rgba(99,102,241,0.5), inset 0 1px 2px rgba(255,255,255,0.3)'
+          : '0 6px 16px rgba(0,232,122,0.5), inset 0 1px 2px rgba(255,255,255,0.2)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
+        e.currentTarget.style.boxShadow = isUser
+          ? '0 4px 12px rgba(99,102,241,0.4), inset 0 1px 2px rgba(255,255,255,0.2)'
+          : '0 4px 12px rgba(0,232,122,0.35), inset 0 1px 2px rgba(255,255,255,0.15)';
+      }}
+      >
         {isUser ? 'U' : '✦'}
       </div>
 
@@ -80,21 +95,37 @@ export default function ChatBubble({ message, onSpeak, onQuery }) {
             padding: hasCard ? '12px 14px' : '10px 14px',
             fontSize:13.5, lineHeight:1.65,
             fontFamily:'var(--font-body)',
+            transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
             ...(isUser ? {
               background:'linear-gradient(135deg,#6366f1,#8b5cf6)',
               color:'#fff',
               borderRadius:'16px 16px 4px 16px',
-              boxShadow:'0 3px 12px rgba(99,102,241,0.25)',
+              boxShadow:'0 6px 20px rgba(99,102,241,0.3), inset 0 1px 2px rgba(255,255,255,0.2)',
             } : {
-              background:'#111',
+              background:'rgba(17, 17, 17, 0.8)',
+              backdropFilter: 'blur(12px)',
               color:'var(--text-1)',
-              border:'1px solid #1e1e1e',
+              border:'1px solid rgba(0,232,122,0.15)',
               borderRadius:'16px 16px 16px 4px',
-              boxShadow:'0 2px 10px rgba(0,0,0,0.5)',
+              boxShadow:'0 6px 20px rgba(0,0,0,0.5), inset 0 1px 2px rgba(0,232,122,0.08)',
             }),
           }}
           aria-live={isUser ? undefined : 'polite'}
           role={isUser ? 'presentation' : 'status'}
+          onMouseEnter={(e) => {
+            if (!isUser) {
+              e.currentTarget.style.background = 'rgba(17, 17, 17, 0.95)';
+              e.currentTarget.style.borderColor = 'rgba(0,232,122,0.25)';
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.6), inset 0 1px 2px rgba(0,232,122,0.12)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isUser) {
+              e.currentTarget.style.background = 'rgba(17, 17, 17, 0.8)';
+              e.currentTarget.style.borderColor = 'rgba(0,232,122,0.15)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.5), inset 0 1px 2px rgba(0,232,122,0.08)';
+            }
+          }}
         >
           {message.nutritionCard   ? <NutritionCard   data={message.nutritionCard} />
           :message.weatherCard    ? <WeatherCard     data={message.weatherCard} />

@@ -53,11 +53,24 @@ export default function MicButton({ isListening, isSpeaking, onClick, onStop, er
       <div style={{ position:'relative', width:130, height:130, flexShrink:0 }}>
         <canvas ref={canvasRef} style={{ position:'absolute', inset:0 }} />
 
+        {/* Glow background */}
+        {(isListening || isSpeaking) && (
+          <div style={{
+            position:'absolute', inset:0,
+            borderRadius:'50%',
+            background: isListening
+              ? 'radial-gradient(circle, rgba(255,61,90,0.15) 0%, rgba(255,61,90,0) 70%)'
+              : 'radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(99,102,241,0) 70%)',
+            animation: 'pulse-scale 2s ease-in-out infinite',
+          }}
+          />
+        )}
+
         {/* Pulse rings */}
         {isListening && (
           <>
-            <div className="mic-ring-1" style={{ position:'absolute', inset:26, borderRadius:'50%', border:'2px solid rgba(255,61,90,0.5)' }} />
-            <div className="mic-ring-2" style={{ position:'absolute', inset:26, borderRadius:'50%', border:'1px solid rgba(255,61,90,0.3)' }} />
+            <div className="mic-ring-1" style={{ position:'absolute', inset:26, borderRadius:'50%', border:'2px solid rgba(255,61,90,0.5)', boxShadow: '0 0 12px rgba(255,61,90,0.3)' }} />
+            <div className="mic-ring-2" style={{ position:'absolute', inset:26, borderRadius:'50%', border:'1px solid rgba(255,61,90,0.3)', boxShadow: '0 0 8px rgba(255,61,90,0.2)' }} />
           </>
         )}
 
@@ -74,25 +87,39 @@ export default function MicButton({ isListening, isSpeaking, onClick, onStop, er
             width:62, height:62, borderRadius:'50%',
             border:'none', cursor:'pointer', fontSize:22,
             display:'flex', alignItems:'center', justifyContent:'center',
-            transition:'all 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+            transition:'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
             fontFamily:'var(--font-body)',
             outline:'none',
+            boxShadow: isSpeaking
+              ? '0 8px 24px rgba(99,102,241,0.5), inset 0 1px 2px rgba(255,255,255,0.2)'
+              : isListening
+              ? '0 8px 24px rgba(255,61,90,0.5), inset 0 1px 2px rgba(255,255,255,0.15)'
+              : '0 6px 20px rgba(0,232,122,0.35), inset 0 1px 2px rgba(255,255,255,0.2)',
             ...(isSpeaking ? {
               background:'linear-gradient(135deg,#6366f1,#8b5cf6)',
-              boxShadow:'0 4px 16px rgba(99,102,241,0.35)',
             } : isListening ? {
               background:'linear-gradient(135deg,#ff3d5a,#ff7080)',
-              transform:'translate(-50%,-50%) scale(1.1)',
-              boxShadow:'0 4px 20px rgba(255,61,90,0.4)',
+              transform:'translate(-50%,-50%) scale(1.12)',
             } : {
               background:'linear-gradient(135deg,#00e87a,#00c264)',
-              boxShadow:'0 4px 16px rgba(0,232,122,0.3)',
             }),
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
               isSpeaking ? onStop?.() : onClick?.()
+            }
+          }}
+          onMouseEnter={(e) => {
+            if (!isListening && !isSpeaking) {
+              e.currentTarget.style.transform = 'translate(-50%,-50%) scale(1.08)';
+              e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,232,122,0.5), inset 0 1px 2px rgba(255,255,255,0.3)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isListening && !isSpeaking) {
+              e.currentTarget.style.transform = 'translate(-50%,-50%)';
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,232,122,0.35), inset 0 1px 2px rgba(255,255,255,0.2)';
             }
           }}
         >
@@ -103,16 +130,20 @@ export default function MicButton({ isListening, isSpeaking, onClick, onStop, er
       {/* Status */}
       <div role="status" aria-live="polite" style={{
         padding:'6px 14px', borderRadius:99,
-        background:'#0f0f0f', border:'1px solid #1e1e1e',
+        background:'rgba(0,0,0,0.6)', backdropFilter:'blur(12px)',
+        border:'1px solid rgba(0,232,122,0.2)',
         fontSize:11, fontFamily:'var(--font-mono)',
         color: statusColor,
         display:'flex', alignItems:'center', gap:6,
-        transition:'all 0.3s',
+        transition:'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.03)',
       }}>
         <div style={{
           width:6, height:6, borderRadius:'50%',
           background: dotColor,
-          boxShadow: isListening ? '0 0 6px #ff3d5a' : isSpeaking ? '0 0 6px #8b5cf6' : 'none',
+          boxShadow: isListening ? '0 0 8px #ff3d5a' : isSpeaking ? '0 0 8px #8b5cf6' : 'none',
+          transition: 'all 0.3s',
+          animation: (isListening || isSpeaking) ? 'pulse-scale 1.5s ease-in-out infinite' : 'none',
         }}/>
         {statusText}
       </div>
